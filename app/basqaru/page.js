@@ -101,8 +101,8 @@ export default function AdminPage() {
           newExams.push({
             title: cols[0],
             exam_date: cols[1],
-            reg_start: cols[2], // мапим register_begin_date
-            reg_end: cols[3],   // мапим register_end_date
+            register_begin_date: cols[2], // мапим register_begin_date
+            register_end_date: cols[3],   // мапим register_end_date
             price: cols[4] || '' // цена, если есть
           });
         }
