@@ -22,7 +22,7 @@ export default function Home() {
 
   useEffect(() => {
     async function fetchExams() {
-      const { data } = await supabase.from('exams').select('*');
+      const { data } = await supabase.from('exams').select('*').order('exam_date', { ascending: true });
       if (data) {
         setExams(data);
       }
@@ -46,7 +46,7 @@ export default function Home() {
         </nav>
       </header>
 
-      {/* Верхний баннер */}
+      {/* Баннер */}
       <section style={{ maxWidth: '1200px', margin: '40px auto 20px auto', padding: '0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
         <div>
           <h1 style={{ fontSize: '28px', fontWeight: '800', margin: '0 0 8px 0', textTransform: 'uppercase' }}>Тестілеу орталығына қош келдіңіздер</h1>
@@ -58,7 +58,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Таблица */}
+      {/* Таблица тестов */}
       <main style={{ maxWidth: '1200px', margin: '30px auto 60px auto', padding: '0 20px' }}>
         <div style={{ backgroundColor: '#1e293b', borderRadius: '16px', padding: '24px', border: '1px solid #334155', boxShadow: '0 10px 25px rgba(0,0,0,0.3)', overflowX: 'auto' }}>
           <h2 style={{ fontSize: '20px', textTransform: 'uppercase', marginBottom: '20px', color: '#f8fafc', fontWeight: '700' }}>Қолжетімді тесттер тізімі</h2>
@@ -71,34 +71,53 @@ export default function Home() {
                 <th style={thStyle}>БАСТАЛУ УАҚЫТЫ</th>
                 <th style={thStyle}>ТІРКЕЛУДІҢ БАСТАЛУЫ</th>
                 <th style={thStyle}>ТІРКЕЛУДІҢ АЯҚТАЛУЫ</th>
+                <th style={thStyle}>СТАТУС</th>
               </tr>
             </thead>
             <tbody>
-              {exams.map((item, index) => (
-                <tr 
-                  key={item.id} 
-                  style={{ 
-                    borderBottom: '1px solid #334155', 
-                    backgroundColor: index % 2 === 0 ? '#1e293b' : '#0f172a',
-                    opacity: item.is_active === false ? 0.5 : 1, // Полупрозрачность для неактивных
-                    filter: item.is_active === false ? 'grayscale(1)' : 'none', // Серый цвет для неактивных
-                    transition: '0.3s'
-                  }}
-                >
-                  <td style={tdStyle}>{index + 1}.</td>
-                  <td style={{ ...tdStyle, fontWeight: '600', color: '#f8fafc' }}>{item.title}</td>
-                  <td style={tdStyle}>{item.exam_date || '—'}</td>
-                  <td style={tdStyle}>{item.start_time || '—'}</td>
-                  <td style={tdStyle}>{item.reg_start || '—'}</td>
-                  <td style={tdStyle}>{item.reg_end || '—'}</td>
-                </tr>
-              ))}
+              {exams.length === 0 ? (
+                <tr><td colSpan="7" style={{ textAlign: 'center', padding: '30px', color: '#94a3b8' }}>Әзірге тесттер жоқ</td></tr>
+              ) : (
+                exams.map((item, index) => {
+                  const isActive = item.is_active === true;
+                  return (
+                    <tr 
+                      key={item.id} 
+                      style={{ 
+                        borderBottom: '1px solid #334155', 
+                        backgroundColor: index % 2 === 0 ? '#1e293b' : '#0f172a',
+                        opacity: isActive ? 1 : 0.45, // Заметное затемнение для неактивных
+                        filter: isActive ? 'none' : 'grayscale(0.8)', // Легкое обесцвечивание
+                        transition: '0.2s'
+                      }}
+                    >
+                      <td style={tdStyle}>{index + 1}.</td>
+                      <td style={{ ...tdStyle, fontWeight: '700', color: isActive ? '#f8fafc' : '#94a3b8' }}>{item.title}</td>
+                      <td style={tdStyle}>{item.exam_date || '—'}</td>
+                      <td style={tdStyle}>{item.exam_time ? item.exam_time.slice(0, 5) : '—'}</td>
+                      <td style={tdStyle}>{item.reg_start_date || '—'}</td>
+                      <td style={tdStyle}>{item.reg_end_date || '—'}</td>
+                      <td style={tdStyle}>
+                        {isActive ? (
+                          <span style={{ backgroundColor: '#0369a1', color: '#e0f2fe', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: '700' }}>
+                            Ашық
+                          </span>
+                        ) : (
+                          <span style={{ backgroundColor: '#475569', color: '#cbd5e1', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: '700' }}>
+                            Жабық
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
       </main>
 
-      {/* Модальные окна (остались без изменений) */}
+      {/* Модальные окна */}
       {activeModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ backgroundColor: '#1e293b', padding: '32px', borderRadius: '16px', width: '100%', maxWidth: '400px', border: '1px solid #334155' }}>
