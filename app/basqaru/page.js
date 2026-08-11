@@ -42,7 +42,6 @@ export default function AdminPage() {
   }, [supabase]);
 
   const loadAllData = async () => {
-    // Внимание: Ткани данных подключаются из таблиц Supabase
     const { data: usersData } = await supabase.from('users').select('*');
     if (usersData) setUsers(usersData);
 
@@ -70,12 +69,12 @@ export default function AdminPage() {
     setIsAuthenticated(false);
   };
 
-  // Простой экспорт в CSV (Excel)
+  // Экспорт списка учеников в Excel/CSV
   const exportToExcel = (data, filename) => {
     if (!data.length) return alert('Деректер жоқ!');
     const headers = Object.keys(data[0]).join(',');
     const rows = data.map(row => Object.values(row).join(','));
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers, ...rows].join('\n');
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers, ...rows].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
@@ -83,6 +82,45 @@ export default function AdminPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // Загрузка тестов из CSV файла прямо в базу данных Supabase
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const text = e.target.result;
+      const lines = text.split('\n').map(row => row.trim()).filter(Boolean);
+      
+      const newExams = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, ''));
+        if (cols.length >= 5) {
+          newExams.push({
+            title: cols[0],
+            exam_date: cols[1],
+            start_time: cols[2],
+            reg_start: cols[3],
+            reg_end: cols[4]
+          });
+        }
+      }
+
+      if (newExams.length > 0) {
+        const { error } = await supabase.from('exams').insert(newExams);
+        if (!error) {
+          alert('Тесттер базаға сәтті жүктелді!');
+          loadAllData();
+        } else {
+          alert('Қате пайда болды: ' + error.message);
+        }
+      } else {
+        alert('Файлдан деректер табылмады!');
+      }
+    };
+    reader.readAsText(file, 'UTF-8');
   };
 
   // ЭКРАН ВХОДА (СВЕТЛЫЙ)
@@ -121,7 +159,7 @@ export default function AdminPage() {
         <button onClick={handleLogout} style={btnLightDanger}>Шығу</button>
       </aside>
 
-      {/* ПОСЕРЕДИНЕ (ОСНОВНОЙ КОНТЕНТ) */}
+      {/* ОСНОВНОЙ КОНТЕНТ */}
       <main style={{ flex: 1, padding: '40px', overflowY: 'auto' }}>
         
         {/* ВКЛАДКА 1: ПОЛЬЗОВАТЕЛИ */}
@@ -157,7 +195,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ВКЛАДКА 2: ОКУШЫЛАР */}
+        {/* ВКЛАДКА 2: УЧЕНИКИ */}
         {activeTab === 'students' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -204,7 +242,7 @@ export default function AdminPage() {
               <h2 style={pageTitle}>Тесттер тізімі</h2>
               <label style={btnBlueUpload}>
                 📤 Тесттерді жүктеу (Excel/CSV)
-                <input type="file" accept=".csv" style={{ display: 'none' }} onChange={() => alert('Файл таңдалды')} />
+                <input type="file" accept=".csv" style={{ display: 'none' }} onChange={handleFileUpload} />
               </label>
             </div>
             <div style={tableContainer}>
