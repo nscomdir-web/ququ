@@ -5,9 +5,15 @@ import { createClient } from '@supabase/supabase-js';
 export const dynamic = 'force-dynamic';
 
 function getSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
-  return createClient(supabaseUrl, supabaseKey);
+  let rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+  let rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
+
+  // Автоматически добавляем https:// если протокол не указан
+  if (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
+    rawUrl = `https://${rawUrl}`;
+  }
+
+  return createClient(rawUrl, rawKey);
 }
 
 export default function Home() {
