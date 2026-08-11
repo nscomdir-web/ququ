@@ -18,190 +18,290 @@ function getSupabaseClient() {
 export default function AdminPage() {
   const [supabase] = useState(() => getSupabaseClient());
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  
-  // Данные авторизации
+  const [activeTab, setActiveTab] = useState('users'); // 'users' | 'students' | 'tests' | 'results'
+
+  // Логин
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Форма добавления нового теста
-  const [title, setTitle] = useState('');
-  const [examDate, setExamDate] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [regStart, setRegStart] = useState('');
-  const [regEnd, setRegEnd] = useState('');
+  // Данные
+  const [users, setUsers] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [tests, setTests] = useState([]);
 
-  const [exams, setExams] = useState([]);
-
-  // Проверка сессии при загрузке
   useEffect(() => {
     async function checkAuth() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setIsAuthenticated(true);
-        loadExams();
+        loadAllData();
       }
     }
     checkAuth();
   }, [supabase]);
 
-  const loadExams = async () => {
-    const { data } = await supabase.from('exams').select('*').order('id', { ascending: false });
-    if (data) setExams(data);
+  const loadAllData = async () => {
+    // Внимание: Ткани данных подключаются из таблиц Supabase
+    const { data: usersData } = await supabase.from('users').select('*');
+    if (usersData) setUsers(usersData);
+
+    const { data: studentsData } = await supabase.from('students').select('*');
+    if (studentsData) setStudents(studentsData);
+
+    const { data: testsData } = await supabase.from('exams').select('*');
+    if (testsData) setTests(testsData);
   };
 
-  // Вход в систему
   const handleLogin = async (e) => {
     e.preventDefault();
     setErrorMsg('');
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      setErrorMsg('Қате логин немесе құпия сөз');
+      setErrorMsg('Логин немесе құпия сөз қате');
     } else {
       setIsAuthenticated(true);
-      loadExams();
+      loadAllData();
     }
   };
 
-  // Выход
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setIsAuthenticated(false);
   };
 
-  // Добавление теста
-  const handleAddExam = async (e) => {
-    e.preventDefault();
-    const { error } = await supabase.from('exams').insert([
-      { title, exam_date: examDate, start_time: startTime, reg_start: regStart, reg_end: regEnd }
-    ]);
-
-    if (!error) {
-      setTitle(''); setExamDate(''); setStartTime(''); setRegStart(''); setRegEnd('');
-      loadExams();
-    } else {
-      alert('Қате пайда болды: ' + error.message);
-    }
+  // Простой экспорт в CSV (Excel)
+  const exportToExcel = (data, filename) => {
+    if (!data.length) return alert('Деректер жоқ!');
+    const headers = Object.keys(data[0]).join(',');
+    const rows = data.map(row => Object.values(row).join(','));
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers, ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `${filename}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  // Удаление теста
-  const handleDeleteExam = async (id) => {
-    if (confirm('Бұл тестті өшіруге сенімдісіз бе?')) {
-      await supabase.from('exams').delete().eq('id', id);
-      loadExams();
-    }
-  };
-
-  // Экран логина, если пользователь не авторизован
+  // ЭКРАН ВХОДА (СВЕТЛЫЙ)
   if (!isAuthenticated) {
     return (
-      <div style={{ backgroundColor: '#0f172a', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif' }}>
-        <form onSubmit={handleLogin} style={{ backgroundColor: '#1e293b', padding: '40px', borderRadius: '16px', border: '1px solid #334155', width: '100%', maxWidth: '380px' }}>
-          <h2 style={{ color: '#38bdf8', marginTop: 0, textAlign: 'center', fontSize: '22px' }}>Басқару панеліне кіру</h2>
-          
-          {errorMsg && <p style={{ color: '#f43f5e', fontSize: '14px', textAlign: 'center' }}>{errorMsg}</p>}
-          
+      <div style={{ backgroundColor: '#f1f5f9', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif' }}>
+        <form onSubmit={handleLogin} style={{ backgroundColor: '#ffffff', padding: '40px', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', width: '100%', maxWidth: '380px' }}>
+          <h2 style={{ color: '#0f172a', marginTop: 0, textAlign: 'center', fontSize: '22px', fontWeight: '800' }}>QUQU Басқару Панелі</h2>
+          {errorMsg && <p style={{ color: '#ef4444', fontSize: '14px', textAlign: 'center' }}>{errorMsg}</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '20px' }}>
-            <input 
-              type="email" 
-              placeholder="Admin Email" 
-              value={email} 
-              onChange={(e) => setEmail(e.target.value)} 
-              required 
-              style={inputStyle} 
-            />
-            <input 
-              type="password" 
-              placeholder="Құпия сөз" 
-              value={password} 
-              onChange={(e) => setPassword(e.target.value)} 
-              required 
-              style={inputStyle} 
-            />
-            <button type="submit" style={btnPrimary}>Кіру</button>
+            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required style={lightInput} />
+            <input type="password" placeholder="Құпия сөз" value={password} onChange={(e) => setPassword(e.target.value)} required style={lightInput} />
+            <button type="submit" style={btnBlue}>Кіру</button>
           </div>
         </form>
       </div>
     );
   }
 
-  // Панель управления
   return (
-    <div style={{ backgroundColor: '#0f172a', minHeight: '100vh', color: '#f8fafc', padding: '30px', fontFamily: 'system-ui, sans-serif' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', borderBottom: '1px solid #334155', paddingBottom: '20px' }}>
-        <h1 style={{ margin: 0, fontSize: '24px', color: '#38bdf8' }}>QUQU Admin | Басқару Панелі</h1>
-        <button onClick={handleLogout} style={btnDanger}>Шығу</button>
-      </header>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '30px' }}>
-        {/* Форма добавления */}
-        <form onSubmit={handleAddExam} style={{ backgroundColor: '#1e293b', padding: '24px', borderRadius: '16px', border: '1px solid #334155' }}>
-          <h3 style={{ marginTop: 0, marginBottom: '20px' }}>Жаңа тест қосу</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <input placeholder="Тест атауы" value={title} onChange={(e) => setTitle(e.target.value)} required style={inputStyle} />
-            <input placeholder="Өткізілетін күні (мысалы: 10.10.2026)" value={examDate} onChange={(e) => setExamDate(e.target.value)} required style={inputStyle} />
-            <input placeholder="Басталу уақыты (мысалы: 10:00)" value={startTime} onChange={(e) => setStartTime(e.target.value)} required style={inputStyle} />
-            <input placeholder="Тіркелудің басталуы (мысалы: 01.09.2026)" value={regStart} onChange={(e) => setRegStart(e.target.value)} required style={inputStyle} />
-            <input placeholder="Тіркелудің аяқталуы (мысалы: 05.10.2026)" value={regEnd} onChange={(e) => setRegEnd(e.target.value)} required style={inputStyle} />
-            <button type="submit" style={{ ...btnPrimary, marginTop: '10px' }}>Қосу</button>
+    <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', display: 'flex', color: '#0f172a', fontFamily: 'system-ui, sans-serif' }}>
+      
+      {/* ЛЕВАЯ СТОРОНА (БОКОВОЕ МЕНЮ) */}
+      <aside style={{ width: '260px', backgroundColor: '#ffffff', borderRight: '1px solid #e2e8f0', padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontSize: '22px', fontWeight: '900', color: '#0284c7', marginBottom: '32px' }}>
+            QUQU<span style={{ color: '#f43f5e' }}>.</span> admin
           </div>
-        </form>
-
-        {/* Список тестов */}
-        <div style={{ backgroundColor: '#1e293b', padding: '24px', borderRadius: '16px', border: '1px solid #334155' }}>
-          <h3 style={{ marginTop: 0, marginBottom: '20px' }}>Барлық тесттер тізімі</h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid #334155', color: '#38bdf8', textAlign: 'left' }}>
-                <th style={{ padding: '10px' }}>Атауы</th>
-                <th style={{ padding: '10px' }}>Күні</th>
-                <th style={{ padding: '10px' }}>Әрекет</th>
-              </tr>
-            </thead>
-            <tbody>
-              {exams.map((item) => (
-                <tr key={item.id} style={{ borderBottom: '1px solid #334155' }}>
-                  <td style={{ padding: '10px' }}>{item.title}</td>
-                  <td style={{ padding: '10px' }}>{item.exam_date || item.examDate}</td>
-                  <td style={{ padding: '10px' }}>
-                    <button onClick={() => handleDeleteExam(item.id)} style={{ ...btnDanger, padding: '4px 8px', fontSize: '12px' }}>Өшіру</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <button onClick={() => setActiveTab('users')} style={menuBtn(activeTab === 'users')}>👤 Пайдаланушылар</button>
+            <button onClick={() => setActiveTab('students')} style={menuBtn(activeTab === 'students')}>🎓 Оқушылар</button>
+            <button onClick={() => setActiveTab('tests')} style={menuBtn(activeTab === 'tests')}>📝 Тесттер</button>
+            <button onClick={() => setActiveTab('results')} style={menuBtn(activeTab === 'results')}>📊 Нәтижелер</button>
+          </nav>
         </div>
-      </div>
+        <button onClick={handleLogout} style={btnLightDanger}>Шығу</button>
+      </aside>
+
+      {/* ПОСЕРЕДИНЕ (ОСНОВНОЙ КОНТЕНТ) */}
+      <main style={{ flex: 1, padding: '40px', overflowY: 'auto' }}>
+        
+        {/* ВКЛАДКА 1: ПОЛЬЗОВАТЕЛИ */}
+        {activeTab === 'users' && (
+          <div>
+            <h2 style={pageTitle}>Пайдаланушылар тізімі</h2>
+            <div style={tableContainer}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr style={thTr}>
+                    <th style={thStyle}>ID</th>
+                    <th style={thStyle}>Аты-жөні</th>
+                    <th style={thStyle}>Email / Телефон</th>
+                    <th style={thStyle}>Тіркелген күні</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.length === 0 ? (
+                    <tr><td colSpan="4" style={tdStyle}>Деректер жоқ</td></tr>
+                  ) : (
+                    users.map((u) => (
+                      <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={tdStyle}>{u.id}</td>
+                        <td style={tdStyle}>{u.name || 'Көрсетілмеген'}</td>
+                        <td style={tdStyle}>{u.email || u.phone}</td>
+                        <td style={tdStyle}>{u.created_at || '—'}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ВКЛАДКА 2: ОКУШЫЛАР */}
+        {activeTab === 'students' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={pageTitle}>Оқушылар тізімі</h2>
+              <button onClick={() => exportToExcel(students, 'students_list')} style={btnGreen}>
+                📥 Excel арқылы жүктеу
+              </button>
+            </div>
+            <div style={tableContainer}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr style={thTr}>
+                    <th style={thStyle}>Аты-жөні</th>
+                    <th style={thStyle}>ЖСН (ИИН)</th>
+                    <th style={thStyle}>Мектеп</th>
+                    <th style={thStyle}>Сынып</th>
+                    <th style={thStyle}>Тіркеген пайдаланушы</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.length === 0 ? (
+                    <tr><td colSpan="5" style={tdStyle}>Оқушылар әлі енгізілмеген</td></tr>
+                  ) : (
+                    students.map((s) => (
+                      <tr key={s.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={tdStyle}>{s.full_name}</td>
+                        <td style={tdStyle}>{s.iin}</td>
+                        <td style={tdStyle}>{s.school}</td>
+                        <td style={tdStyle}>{s.grade}</td>
+                        <td style={tdStyle}>{s.user_id}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ВКЛАДКА 3: ТЕСТЫ */}
+        {activeTab === 'tests' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={pageTitle}>Тесттер тізімі</h2>
+              <label style={btnBlueUpload}>
+                📤 Тесттерді жүктеу (Excel/CSV)
+                <input type="file" accept=".csv" style={{ display: 'none' }} onChange={() => alert('Файл таңдалды')} />
+              </label>
+            </div>
+            <div style={tableContainer}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr style={thTr}>
+                    <th style={thStyle}>Атауы</th>
+                    <th style={thStyle}>Өткізілетін күні</th>
+                    <th style={thStyle}>Уақыты</th>
+                    <th style={thStyle}>Тіркелу басы</th>
+                    <th style={thStyle}>Тіркелу соңы</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tests.map((t) => (
+                    <tr key={t.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={tdStyle}>{t.title}</td>
+                      <td style={tdStyle}>{t.exam_date || t.examDate}</td>
+                      <td style={tdStyle}>{t.start_time || t.startTime}</td>
+                      <td style={tdStyle}>{t.reg_start || t.regStart}</td>
+                      <td style={tdStyle}>{t.reg_end || t.regEnd}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ВКЛАДКА 4: РЕЗУЛЬТАТЫ */}
+        {activeTab === 'results' && (
+          <div>
+            <h2 style={pageTitle}>Тест нәтижелерін енгізу</h2>
+            <div style={tableContainer}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr style={thTr}>
+                    <th style={thStyle}>Тест атауы</th>
+                    <th style={thStyle}>Өткізілген күні</th>
+                    <th style={thStyle}>Әрекет (Нәтиже жүктеу)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tests.map((t) => (
+                    <tr key={t.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={tdStyle}>{t.title}</td>
+                      <td style={tdStyle}>{t.exam_date || t.examDate}</td>
+                      <td style={tdStyle}>
+                        <label style={{ ...btnBlueUpload, padding: '8px 14px', fontSize: '13px' }}>
+                          📤 Нәтиже файлын жүктеу (Excel)
+                          <input type="file" accept=".csv, .xlsx" style={{ display: 'none' }} onChange={() => alert(`"${t.title}" бойынша файл жүктелді!`)} />
+                        </label>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+      </main>
     </div>
   );
 }
 
-const inputStyle = {
-  backgroundColor: '#0f172a',
-  border: '1px solid #334155',
+// СТИЛИ (СВЕТЛАЯ ГАММА)
+const lightInput = {
+  backgroundColor: '#f8fafc',
+  border: '1px solid #cbd5e1',
   padding: '12px',
   borderRadius: '8px',
-  color: '#fff',
+  color: '#0f172a',
   outline: 'none'
 };
 
-const btnPrimary = {
-  backgroundColor: '#38bdf8',
-  color: '#0f172a',
-  border: 'none',
-  padding: '12px',
+const menuBtn = (active) => ({
+  width: '100%',
+  textAlign: 'left',
+  padding: '12px 16px',
   borderRadius: '8px',
-  fontWeight: 'bold',
-  cursor: 'pointer'
-};
+  border: 'none',
+  backgroundColor: active ? '#e0f2fe' : 'transparent',
+  color: active ? '#0369a1' : '#64748b',
+  fontWeight: active ? '700' : '500',
+  cursor: 'pointer',
+  fontSize: '15px'
+});
 
-const btnDanger = {
-  backgroundColor: '#f43f5e',
-  color: '#fff',
-  border: 'none',
-  padding: '8px 16px',
-  borderRadius: '8px',
-  fontWeight: 'bold',
-  cursor: 'pointer'
-};
+const pageTitle = { margin: 0, fontSize: '24px', fontWeight: '800', color: '#0f172a' };
+const tableContainer = { backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', marginTop: '20px', overflowX: 'auto' };
+const tableStyle = { width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' };
+const thTr = { backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' };
+const thStyle = { padding: '14px 18px', color: '#64748b', fontWeight: '700', fontSize: '12px', textTransform: 'uppercase' };
+const tdStyle = { padding: '16px 18px', color: '#334155' };
+
+const btnBlue = { backgroundColor: '#0284c7', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' };
+const btnGreen = { backgroundColor: '#16a34a', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' };
+const btnBlueUpload = { backgroundColor: '#0284c7', color: '#fff', padding: '10px 18px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'inline-block', fontSize: '14px' };
+const btnLightDanger = { backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', padding: '10px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', width: '100%' };
