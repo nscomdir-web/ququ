@@ -15,18 +15,26 @@ function getSupabaseClient() {
   return createClient(rawUrl, rawKey);
 }
 
-// Вспомогательная функция для конвертации дат в ISO формат (YYYY-MM-DD)
+// Конвертация даты DD.MM.YYYY -> YYYY-MM-DD
 function parseDate(dateStr) {
   if (!dateStr) return null;
   const cleaned = dateStr.trim();
-  // Если дата в формате DD.MM.YYYY
   if (/^\d{2}\.\d{2}\.\d{4}$/.test(cleaned)) {
     const [day, month, year] = cleaned.split('.');
     return `${year}-${month}-${day}`;
   }
-  // Если дата уже YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
     return cleaned;
+  }
+  return null;
+}
+
+// Валидация времени HH:MM
+function parseTime(timeStr) {
+  if (!timeStr) return null;
+  const cleaned = timeStr.trim();
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(cleaned)) {
+    return cleaned.length === 4 ? `0${cleaned}` : cleaned;
   }
   return null;
 }
@@ -34,7 +42,7 @@ function parseDate(dateStr) {
 export default function AdminPage() {
   const [supabase] = useState(() => getSupabaseClient());
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [activeTab, setActiveTab] = useState('tests'); // 'users' | 'students' | 'tests' | 'results'
+  const [activeTab, setActiveTab] = useState('tests');
 
   // Логин
   const [email, setEmail] = useState('');
@@ -64,7 +72,6 @@ export default function AdminPage() {
     const { data: studentsData } = await supabase.from('students').select('*');
     if (studentsData) setStudents(studentsData);
 
-    // Сортируем по exam_date (работает благодаря корректному типу date)
     const { data: testsData } = await supabase.from('exams').select('*').order('exam_date', { ascending: true });
     if (testsData) setTests(testsData);
   };
@@ -86,7 +93,6 @@ export default function AdminPage() {
     setIsAuthenticated(false);
   };
 
-  // Экспорт списка учеников в CSV
   const exportToExcel = (data, filename) => {
     if (!data.length) return alert('Деректер жоқ!');
     const headers = Object.keys(data[0]).join(',');
@@ -101,7 +107,6 @@ export default function AdminPage() {
     document.body.removeChild(link);
   };
 
-  // Парсинг CSV с валидацией и приведением типов
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -121,11 +126,11 @@ export default function AdminPage() {
           newExams.push({
             title: cols[0],
             exam_date: parseDate(cols[1]),
-            exam_time: cols[2] || null,
+            exam_time: parseTime(cols[2]),
             reg_start_date: parseDate(cols[3]),
-            reg_start_time: cols[4] || null,
+            reg_start_time: parseTime(cols[4]),
             reg_end_date: parseDate(cols[5]),
-            reg_end_time: cols[6] || null,
+            reg_end_time: parseTime(cols[6]),
             price: isNaN(rawPrice) ? 0 : rawPrice,
             is_active: isActive
           });
@@ -147,7 +152,6 @@ export default function AdminPage() {
     reader.readAsText(file, 'UTF-8');
   };
 
-  // Удаление теста
   const handleDeleteExam = async (id) => {
     if (confirm('Бұл тестті өшіруге сенімдісіз бе?')) {
       await supabase.from('exams').delete().eq('id', id);
@@ -155,7 +159,6 @@ export default function AdminPage() {
     }
   };
 
-  // ЭКРАН ВХОДА
   if (!isAuthenticated) {
     return (
       <div style={{ backgroundColor: '#f1f5f9', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif' }}>
@@ -174,8 +177,6 @@ export default function AdminPage() {
 
   return (
     <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', display: 'flex', color: '#0f172a', fontFamily: 'system-ui, sans-serif' }}>
-      
-      {/* БОКОВОЕ МЕНЮ */}
       <aside style={{ width: '260px', backgroundColor: '#ffffff', borderRight: '1px solid #e2e8f0', padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
         <div>
           <div style={{ fontSize: '22px', fontWeight: '900', color: '#0284c7', marginBottom: '32px' }}>
@@ -191,10 +192,7 @@ export default function AdminPage() {
         <button onClick={handleLogout} style={btnLightDanger}>Шығу</button>
       </aside>
 
-      {/* ОСНОВНОЙ КОНТЕНТ */}
       <main style={{ flex: 1, padding: '40px', overflowY: 'auto' }}>
-        
-        {/* ВКЛАДКА 1: ПОЛЬЗОВАТЕЛИ */}
         {activeTab === 'users' && (
           <div>
             <h2 style={pageTitle}>Пайдаланушылар тізімі</h2>
@@ -227,7 +225,6 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ВКЛАДКА 2: ОКУШЫЛАР */}
         {activeTab === 'students' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -267,7 +264,6 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ВКЛАДКА 3: ТЕСТЫ */}
         {activeTab === 'tests' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -325,7 +321,6 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ВКЛАДКА 4: РЕЗУЛЬТАТЫ */}
         {activeTab === 'results' && (
           <div>
             <h2 style={pageTitle}>Тест нәтижелерін енгізу</h2>
@@ -356,80 +351,11 @@ export default function AdminPage() {
             </div>
           </div>
         )}
-
       </main>
     </div>
   );
 }
-// Валидация даты (конвертирует DD.MM.YYYY в YYYY-MM-DD)
-function parseDate(dateStr) {
-  if (!dateStr) return null;
-  const cleaned = dateStr.trim();
-  if (/^\d{2}\.\d{2}\.\d{4}$/.test(cleaned)) {
-    const [day, month, year] = cleaned.split('.');
-    return `${year}-${month}-${day}`;
-  }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
-    return cleaned;
-  }
-  return null;
-}
 
-// Валидация времени (проверяет формат HH:MM или HH:MM:SS)
-function parseTime(timeStr) {
-  if (!timeStr) return null;
-  const cleaned = timeStr.trim();
-  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(cleaned)) {
-    return cleaned.length === 4 ? `0${cleaned}` : cleaned;
-  }
-  return null;
-}
-
-// Обработчик файлов
-const handleFileUpload = (event) => {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    const text = e.target.result;
-    const lines = text.split('\n').map(row => row.trim()).filter(Boolean);
-    
-    const newExams = [];
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, ''));
-      if (cols.length >= 8) {
-        const rawPrice = cols[7] ? parseFloat(cols[7].replace(/[^\d.]/g, '')) : 0;
-        const isActive = cols[8] ? cols[8].toLowerCase() === 'true' : true;
-
-        newExams.push({
-          title: cols[0],
-          exam_date: parseDate(cols[1]),
-          exam_time: parseTime(cols[2]),
-          reg_start_date: parseDate(cols[3]),
-          reg_start_time: parseTime(cols[4]),
-          reg_end_date: parseDate(cols[5]),
-          reg_end_time: parseTime(cols[6]),
-          price: isNaN(rawPrice) ? 0 : rawPrice,
-          is_active: isActive
-        });
-      }
-    }
-
-    if (newExams.length > 0) {
-      const { error } = await supabase.from('exams').insert(newExams);
-      if (!error) {
-        alert('Тесттер базаға сәтті жүктелді!');
-        loadAllData();
-      } else {
-        alert('Қате пайда болды: ' + error.message);
-      }
-    } else {
-      alert('Файлдан дұрыс деректер табылмады!');
-    }
-  };
-  reader.readAsText(file, 'UTF-8');
-};
 // СТИЛИ
 const lightInput = { backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', padding: '12px', borderRadius: '8px', color: '#0f172a', outline: 'none' };
 const menuBtn = (active) => ({ width: '100%', textAlign: 'left', padding: '12px 16px', borderRadius: '8px', border: 'none', backgroundColor: active ? '#e0f2fe' : 'transparent', color: active ? '#0369a1' : '#64748b', fontWeight: active ? '700' : '500', cursor: 'pointer', fontSize: '15px' });
