@@ -361,7 +361,75 @@ export default function AdminPage() {
     </div>
   );
 }
+// Валидация даты (конвертирует DD.MM.YYYY в YYYY-MM-DD)
+function parseDate(dateStr) {
+  if (!dateStr) return null;
+  const cleaned = dateStr.trim();
+  if (/^\d{2}\.\d{2}\.\d{4}$/.test(cleaned)) {
+    const [day, month, year] = cleaned.split('.');
+    return `${year}-${month}-${day}`;
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
+    return cleaned;
+  }
+  return null;
+}
 
+// Валидация времени (проверяет формат HH:MM или HH:MM:SS)
+function parseTime(timeStr) {
+  if (!timeStr) return null;
+  const cleaned = timeStr.trim();
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(cleaned)) {
+    return cleaned.length === 4 ? `0${cleaned}` : cleaned;
+  }
+  return null;
+}
+
+// Обработчик файлов
+const handleFileUpload = (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const text = e.target.result;
+    const lines = text.split('\n').map(row => row.trim()).filter(Boolean);
+    
+    const newExams = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, ''));
+      if (cols.length >= 8) {
+        const rawPrice = cols[7] ? parseFloat(cols[7].replace(/[^\d.]/g, '')) : 0;
+        const isActive = cols[8] ? cols[8].toLowerCase() === 'true' : true;
+
+        newExams.push({
+          title: cols[0],
+          exam_date: parseDate(cols[1]),
+          exam_time: parseTime(cols[2]),
+          reg_start_date: parseDate(cols[3]),
+          reg_start_time: parseTime(cols[4]),
+          reg_end_date: parseDate(cols[5]),
+          reg_end_time: parseTime(cols[6]),
+          price: isNaN(rawPrice) ? 0 : rawPrice,
+          is_active: isActive
+        });
+      }
+    }
+
+    if (newExams.length > 0) {
+      const { error } = await supabase.from('exams').insert(newExams);
+      if (!error) {
+        alert('Тесттер базаға сәтті жүктелді!');
+        loadAllData();
+      } else {
+        alert('Қате пайда болды: ' + error.message);
+      }
+    } else {
+      alert('Файлдан дұрыс деректер табылмады!');
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+};
 // СТИЛИ
 const lightInput = { backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', padding: '12px', borderRadius: '8px', color: '#0f172a', outline: 'none' };
 const menuBtn = (active) => ({ width: '100%', textAlign: 'left', padding: '12px 16px', borderRadius: '8px', border: 'none', backgroundColor: active ? '#e0f2fe' : 'transparent', color: active ? '#0369a1' : '#64748b', fontWeight: active ? '700' : '500', cursor: 'pointer', fontSize: '15px' });
