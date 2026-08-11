@@ -2,17 +2,20 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
+export const dynamic = 'force-dynamic';
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
+  return createClient(supabaseUrl, supabaseKey);
+}
 
 export default function Home() {
+  const [supabase] = useState(() => getSupabaseClient());
   const [activeTab, setActiveTab] = useState('register');
   const [user, setUser] = useState(null);
   const [students, setStudents] = useState([]);
   const [exams, setExams] = useState([]);
-  const [tickets, setTickets] = useState([]);
 
   // Форма регистрации родителя
   const [regData, setRegData] = useState({ firstName: '', secondName: '', email: '', phone: '', password: '' });
@@ -22,13 +25,12 @@ export default function Home() {
   const [scanResult, setScanResult] = useState('');
 
   useEffect(() => {
+    async function fetchExams() {
+      const { data } = await supabase.from('exams').select('*');
+      if (data) setExams(data);
+    }
     fetchExams();
-  }, []);
-
-  async function fetchExams() {
-    const { data } = await supabase.from('exams').select('*');
-    if (data) setExams(data);
-  }
+  }, [supabase]);
 
   async function handleRegister(e) {
     e.preventDefault();
@@ -58,7 +60,7 @@ export default function Home() {
 
     const { data: userData } = await supabase.from('users').select('id').eq('auth_id', user.id).single();
     
-    const { data, error } = await supabase.from('students').insert([{
+    const { error } = await supabase.from('students').insert([{
       parent_id: userData?.id,
       first_name: studentData.firstName,
       second_name: studentData.secondName,
