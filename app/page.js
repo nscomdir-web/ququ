@@ -2,13 +2,13 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState('register'); // register, login, dashboard, scan
+  const [activeTab, setActiveTab] = useState('register');
   const [user, setUser] = useState(null);
   const [students, setStudents] = useState([]);
   const [exams, setExams] = useState([]);
@@ -18,7 +18,7 @@ export default function Home() {
   const [regData, setRegData] = useState({ firstName: '', secondName: '', email: '', phone: '', password: '' });
   // Форма ученика
   const [studentData, setStudentData] = useState({ firstName: '', secondName: '', iin: '', language: 'kaz', school: '', grade: '', city: '' });
-  // Сканер
+  // Сканер / Код
   const [scanResult, setScanResult] = useState('');
 
   useEffect(() => {
@@ -59,7 +59,7 @@ export default function Home() {
     const { data: userData } = await supabase.from('users').select('id').eq('auth_id', user.id).single();
     
     const { data, error } = await supabase.from('students').insert([{
-      parent_id: userData.id,
+      parent_id: userData?.id,
       first_name: studentData.firstName,
       second_name: studentData.secondName,
       iin: studentData.iin,
@@ -73,7 +73,7 @@ export default function Home() {
     else {
       alert('Оқушы сәтті қосылды!');
       setStudentData({ firstName: '', secondName: '', iin: '', language: 'kaz', school: '', grade: '', city: '' });
-      loadUserData(userData.id);
+      if (userData?.id) loadUserData(userData.id);
     }
   }
 
@@ -83,7 +83,7 @@ export default function Home() {
   }
 
   async function buyTicket(studentId, examId) {
-    const code = Math.floor(10000 + Math.random() * 90000).toString(); // 5-значный код
+    const code = Math.floor(10000 + Math.random() * 90000).toString();
     const qrData = `QUQU-${code}-${studentId}-${examId}`;
 
     const { error } = await supabase.from('tickets').insert([{
