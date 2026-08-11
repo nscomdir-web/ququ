@@ -84,7 +84,7 @@ export default function AdminPage() {
     document.body.removeChild(link);
   };
 
-  // Загрузка тестов из CSV файла прямо в базу данных Supabase
+  // Загрузка тестов из CSV файла под твои заголовки из Excel
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -97,13 +97,13 @@ export default function AdminPage() {
       const newExams = [];
       for (let i = 1; i < lines.length; i++) {
         const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, ''));
-        if (cols.length >= 5) {
+        if (cols.length >= 4) {
           newExams.push({
             title: cols[0],
             exam_date: cols[1],
-            start_time: cols[2],
-            reg_start: cols[3],
-            reg_end: cols[4]
+            reg_start: cols[2], // мапим register_begin_date
+            reg_end: cols[3],   // мапим register_end_date
+            price: cols[4] || '' // цена, если есть
           });
         }
       }
@@ -122,7 +122,6 @@ export default function AdminPage() {
     };
     reader.readAsText(file, 'UTF-8');
   };
-
   // ЭКРАН ВХОДА (СВЕТЛЫЙ)
   if (!isAuthenticated) {
     return (
