@@ -360,7 +360,39 @@ export default function AdminPage() {
     </div>
   );
 }
-
+<table style={tableStyle}>
+  <thead>
+    <tr style={thTr}>
+      <th style={thStyle}>Атауы</th>
+      <th style={thStyle}>Өткізілетін күні</th>
+      <th style={thStyle}>Тіркелу уақыты</th>
+      <th style={thStyle}>Бағасы</th>
+      <th style={thStyle}>Статус</th>
+      <th style={thStyle}>Әрекет</th>
+    </tr>
+  </thead>
+  <tbody>
+    {tests.map((t) => (
+      <tr key={t.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+        <td style={{ ...tdStyle, fontWeight: '600' }}>{t.title}</td>
+        <td style={tdStyle}>{t.exam_date || '—'} {t.exam_time ? `(${t.exam_time.slice(0, 5)})` : ''}</td>
+        <td style={tdStyle}>{t.reg_start_date || '—'} / {t.reg_end_date || '—'}</td>
+        <td style={{ ...tdStyle, fontWeight: 'bold', color: '#16a34a' }}>{t.price} ₸</td>
+        <td style={tdStyle}>
+          <input 
+            type="checkbox" 
+            checked={t.is_active} 
+            onChange={() => toggleActive(t.id, t.is_active)}
+            style={{ cursor: 'pointer', transform: 'scale(1.3)' }}
+          />
+        </td>
+        <td style={tdStyle}>
+          <button onClick={() => handleDeleteExam(t.id)} style={btnSmallDanger}>Өшіру</button>
+        </td>
+      </tr>
+    ))}
+  </tbody>
+</table>
 // СТИЛИ
 const lightInput = { backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', padding: '12px', borderRadius: '8px', color: '#0f172a', outline: 'none', width: '100%', boxSizing: 'border-box' };
 const menuBtn = (active) => ({ width: '100%', textAlign: 'left', padding: '12px 16px', borderRadius: '8px', border: 'none', backgroundColor: active ? '#e0f2fe' : 'transparent', color: active ? '#0369a1' : '#64748b', fontWeight: active ? '700' : '500', cursor: 'pointer', fontSize: '15px' });
