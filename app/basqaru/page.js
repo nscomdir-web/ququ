@@ -15,7 +15,6 @@ function getSupabaseClient() {
   return createClient(rawUrl, rawKey);
 }
 
-// Конвертация даты DD.MM.YYYY -> YYYY-MM-DD
 function parseDate(dateStr) {
   if (!dateStr) return null;
   const cleaned = dateStr.trim();
@@ -29,7 +28,6 @@ function parseDate(dateStr) {
   return null;
 }
 
-// Валидация времени HH:MM
 function parseTime(timeStr) {
   if (!timeStr) return null;
   const cleaned = timeStr.trim();
@@ -44,12 +42,10 @@ export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState('tests');
 
-  // Логин
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Данные
   const [users, setUsers] = useState([]);
   const [students, setStudents] = useState([]);
   const [tests, setTests] = useState([]);
@@ -292,6 +288,7 @@ export default function AdminPage() {
                   <tr style={thTr}>
                     <th style={thStyle}>Атауы</th>
                     <th style={thStyle}>Өткізілетін күні</th>
+                    <th style={thStyle}>Тіркелу мерзімі</th>
                     <th style={thStyle}>Бағасы</th>
                     <th style={thStyle}>Статус</th>
                     <th style={thStyle}>Әрекет</th>
@@ -299,12 +296,13 @@ export default function AdminPage() {
                 </thead>
                 <tbody>
                   {tests.length === 0 ? (
-                    <tr><td colSpan="5" style={tdStyle}>Тесттер әлі жоқ</td></tr>
+                    <tr><td colSpan="6" style={tdStyle}>Тесттер әлі жоқ</td></tr>
                   ) : (
                     tests.map((t) => (
                       <tr key={t.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ ...tdStyle, fontWeight: '600' }}>{t.title}</td>
                         <td style={tdStyle}>{t.exam_date || '—'} {t.exam_time ? `(${t.exam_time.slice(0, 5)})` : ''}</td>
+                        <td style={tdStyle}>{t.reg_start_date || '—'} / {t.reg_end_date || '—'}</td>
                         <td style={{ ...tdStyle, fontWeight: 'bold', color: '#16a34a' }}>{t.price} ₸</td>
                         <td style={tdStyle}>
                           <input 
@@ -360,45 +358,12 @@ export default function AdminPage() {
     </div>
   );
 }
-<table style={tableStyle}>
-  <thead>
-    <tr style={thTr}>
-      <th style={thStyle}>Атауы</th>
-      <th style={thStyle}>Өткізілетін күні</th>
-      <th style={thStyle}>Тіркелу уақыты</th>
-      <th style={thStyle}>Бағасы</th>
-      <th style={thStyle}>Статус</th>
-      <th style={thStyle}>Әрекет</th>
-    </tr>
-  </thead>
-  <tbody>
-    {tests.map((t) => (
-      <tr key={t.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-        <td style={{ ...tdStyle, fontWeight: '600' }}>{t.title}</td>
-        <td style={tdStyle}>{t.exam_date || '—'} {t.exam_time ? `(${t.exam_time.slice(0, 5)})` : ''}</td>
-        <td style={tdStyle}>{t.reg_start_date || '—'} / {t.reg_end_date || '—'}</td>
-        <td style={{ ...tdStyle, fontWeight: 'bold', color: '#16a34a' }}>{t.price} ₸</td>
-        <td style={tdStyle}>
-          <input 
-            type="checkbox" 
-            checked={t.is_active} 
-            onChange={() => toggleActive(t.id, t.is_active)}
-            style={{ cursor: 'pointer', transform: 'scale(1.3)' }}
-          />
-        </td>
-        <td style={tdStyle}>
-          <button onClick={() => handleDeleteExam(t.id)} style={btnSmallDanger}>Өшіру</button>
-        </td>
-      </tr>
-    ))}
-  </tbody>
-</table>
-// СТИЛИ
+
 const lightInput = { backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', padding: '12px', borderRadius: '8px', color: '#0f172a', outline: 'none', width: '100%', boxSizing: 'border-box' };
 const menuBtn = (active) => ({ width: '100%', textAlign: 'left', padding: '12px 16px', borderRadius: '8px', border: 'none', backgroundColor: active ? '#e0f2fe' : 'transparent', color: active ? '#0369a1' : '#64748b', fontWeight: active ? '700' : '500', cursor: 'pointer', fontSize: '15px' });
 const pageTitle = { margin: 0, fontSize: '24px', fontWeight: '800', color: '#0f172a' };
 const tableContainer = { backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', marginTop: '20px', overflowX: 'auto', width: '100%' };
-const tableStyle = { width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px', minWidth: '500px' };
+const tableStyle = { width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px', minWidth: '600px' };
 const thTr = { backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' };
 const thStyle = { padding: '14px 18px', color: '#64748b', fontWeight: '700', fontSize: '12px', textTransform: 'uppercase' };
 const tdStyle = { padding: '16px 18px', color: '#334155' };
