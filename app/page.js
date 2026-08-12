@@ -54,7 +54,9 @@ export default function Home() {
         </div>
         <div style={{ display: 'flex', gap: '16px' }}>
           <button onClick={() => setActiveModal('register')} style={{ ...btnBase, backgroundColor: '#38bdf8', color: '#0f172a' }}>👤 ЖАҢА ПАЙДАЛАНУШЫ</button>
-          <button onClick={() => setActiveModal('login')} style={{ ...btnBase, backgroundColor: '#6366f1', color: '#fff' }}>🔒 ЖЕКЕ КАБИНЕТКЕ КІРУ</button>
+          <a href="/dashboard" style={{ textDecoration: 'none' }}>
+            <button style={{ ...btnBase, backgroundColor: '#6366f1', color: '#fff', cursor: 'pointer' }}>🔒 ЖЕКЕ КАБИНЕТКЕ КІРУ</button>
+          </a>
         </div>
       </section>
 
@@ -86,8 +88,8 @@ export default function Home() {
                       style={{ 
                         borderBottom: '1px solid #334155', 
                         backgroundColor: index % 2 === 0 ? '#1e293b' : '#0f172a',
-                        opacity: isActive ? 1 : 0.45, // Заметное затемнение для неактивных
-                        filter: isActive ? 'none' : 'grayscale(0.8)', // Легкое обесцвечивание
+                        opacity: isActive ? 1 : 0.45,
+                        filter: isActive ? 'none' : 'grayscale(0.8)',
                         transition: '0.2s'
                       }}
                     >
