@@ -37,8 +37,8 @@ export default function Home() {
     fetchExams();
   }, [supabase]);
 
-  // Функция регистрации с отправкой подтверждения на email
- const handleRegister = async (e) => {
+  // Функция регистрации с отправкой подтверждения на email и записью в profiles с is_active: false
+  const handleRegister = async (e) => {
     e.preventDefault();
     setAuthMsg('');
 
@@ -60,16 +60,22 @@ export default function Home() {
       return;
     }
 
-    // 2. Сразу записываем данные в вашу таблицу public.users
+    // 2. Записываем данные в новую таблицу public.profiles со статусом is_active: false
     if (data?.user) {
-      await supabase.from('users').insert([
+      const { error: profileError } = await supabase.from('profiles').insert([
         {
-          auth_id: data.user.id,
-          first_name: regName,
-          whatsapp_number: regPhone,
-          email: regEmail
+          id: data.user.id,
+          name: regName,
+          phone: regPhone,
+          is_active: false, // Изначально false, станет true после подтверждения email через триггер
+          is_teacher: false
         }
       ]);
+
+      if (profileError) {
+        setAuthMsg('Қате (Профиль): ' + profileError.message);
+        return;
+      }
     }
 
     setAuthMsg('Сәтті! Электронды почтаңызға растау сілтемесі жіберілді. Почтаңызды тексеріңіз.');
