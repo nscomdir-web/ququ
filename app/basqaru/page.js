@@ -62,12 +62,15 @@ export default function AdminPage() {
   }, [supabase]);
 
   const loadAllData = async () => {
-    const { data: usersData } = await supabase.from('users').select('*');
+    // Загружаем пользователей из созданного View
+    const { data: usersData } = await supabase.from('vw_admin_users').select('*');
     if (usersData) setUsers(usersData);
 
+    // Загружаем всех учеников со всеми полями
     const { data: studentsData } = await supabase.from('students').select('*');
     if (studentsData) setStudents(studentsData);
 
+    // Загружаем тесты
     const { data: testsData } = await supabase.from('exams').select('*').order('exam_date', { ascending: true });
     if (testsData) setTests(testsData);
   };
@@ -80,10 +83,18 @@ export default function AdminPage() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setErrorMsg('');
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    
     if (error) {
       setErrorMsg('Логин немесе құпия сөз қате');
     } else {
+      // Проверяем, есть ли права админа (например через метаданные is_admin)
+      const isAdmin = data.user?.user_metadata?.is_admin === true;
+      if (!isAdmin) {
+        // Если хотите разрешить вход только админам, раскомментируйте строчки ниже:
+        // await supabase.auth.signOut();
+        // return setErrorMsg('Бұл бетке тек әкімшілер кіре алады!');
+      }
       setIsAuthenticated(true);
       loadAllData();
     }
@@ -162,8 +173,8 @@ export default function AdminPage() {
 
   if (!isAuthenticated) {
     return (
-      <div style={{ backgroundColor: '#f1f5f9', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif', padding: '16px' }}>
-        <form onSubmit={handleLogin} style={{ backgroundColor: '#ffffff', padding: '40px', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', width: '100%', maxWidth: '380px' }}>
+      <div style={{ backgroundColor: '#f1f5f9', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif', padding: '16px', boxSizing: 'border-box' }}>
+        <form onSubmit={handleLogin} style={{ backgroundColor: '#ffffff', padding: '40px', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', width: '100%', maxWidth: '380px', boxSizing: 'border-box' }}>
           <h2 style={{ color: '#0f172a', marginTop: 0, textAlign: 'center', fontSize: '22px', fontWeight: '800' }}>QUQU Басқару Панелі</h2>
           {errorMsg && <p style={{ color: '#ef4444', fontSize: '14px', textAlign: 'center' }}>{errorMsg}</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '20px' }}>
@@ -182,6 +193,10 @@ export default function AdminPage() {
         @media (max-width: 768px) {
           .admin-layout {
             grid-template-columns: 1fr !important;
+          }
+          aside {
+            width: 100% !important;
+            position: relative !important;
           }
         }
       `}</style>
@@ -221,10 +236,10 @@ export default function AdminPage() {
                   ) : (
                     users.map((u) => (
                       <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={tdStyle}>{u.id}</td>
+                        <td style={tdStyle}>{u.id.substring(0, 8)}...</td>
                         <td style={tdStyle}>{u.name || 'Көрсетілмеген'}</td>
-                        <td style={tdStyle}>{u.email || u.phone}</td>
-                        <td style={tdStyle}>{u.created_at ? new Date(u.created_at).toLocaleDateString('ru-RU') : '—'}</td>
+                        <td style={tdStyle}>{u.email || u.phone || '—'}</td>
+                        <td style={tdStyle}>{u.created_at ? new Date(u.created_at).toLocaleString() : '—'}</td>
                       </tr>
                     ))
                   )}
@@ -237,7 +252,7 @@ export default function AdminPage() {
         {activeTab === 'students' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
-              <h2 style={pageTitle}>Оқушылар тізімі</h2>
+              <h2 style={pageTitle}>Барлық оқушылар (Толық мәлімет)</h2>
               <button onClick={() => exportToExcel(students, 'students_list')} style={btnGreen}>
                 📥 Excel арқылы жүктеу
               </button>
@@ -246,24 +261,30 @@ export default function AdminPage() {
               <table style={tableStyle}>
                 <thead>
                   <tr style={thTr}>
+                    <th style={thStyle}>Фото</th>
                     <th style={thStyle}>Аты-жөні</th>
                     <th style={thStyle}>ЖСН (ИИН)</th>
-                    <th style={thStyle}>Мектеп</th>
-                    <th style={thStyle}>Сынып</th>
-                    <th style={thStyle}>Тіркеген пайдаланушы</th>
+                    <th style={thStyle}>Мектеп / Қала</th>
+                    <th style={thStyle}>Сынып / Тіл</th>
+                    <th style={thStyle}>Ата-ана ID</th>
                   </tr>
                 </thead>
                 <tbody>
                   {students.length === 0 ? (
-                    <tr><td colSpan="5" style={tdStyle}>Оқушылар әлі енгізілмеген</td></tr>
+                    <tr><td colSpan="6" style={tdStyle}>Оқушылар әлі енгізілмеген</td></tr>
                   ) : (
                     students.map((s) => (
                       <tr key={s.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={tdStyle}>{s.full_name}</td>
+                        <td style={tdStyle}>
+                          <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                            {s.photo_url ? <img src={s.photo_url} alt="" style={{width: '100%', height: '100%', objectFit: 'cover'}} /> : '👤'}
+                          </div>
+                        </td>
+                        <td style={{ ...tdStyle, fontWeight: '600' }}>{s.first_name} {s.second_name}</td>
                         <td style={tdStyle}>{s.iin}</td>
-                        <td style={tdStyle}>{s.school}</td>
-                        <td style={tdStyle}>{s.grade}</td>
-                        <td style={tdStyle}>{s.user_id}</td>
+                        <td style={tdStyle}>{s.school || '—'} <br/><span style={{fontSize: '12px', color: '#64748b'}}>{s.city}</span></td>
+                        <td style={tdStyle}>{s.grade} сынып <br/><span style={{fontSize: '12px', color: '#64748b'}}>{s.language}</span></td>
+                        <td style={{ ...tdStyle, fontSize: '11px', color: '#64748b' }}>{s.parent_id || s.user_id || '—'}</td>
                       </tr>
                     ))
                   )}
