@@ -62,8 +62,8 @@ export default function AdminPage() {
   }, [supabase]);
 
   const loadAllData = async () => {
-    // Загружаем пользователей из созданного View
-    const { data: usersData } = await supabase.from('vw_admin_users').select('*');
+    // Загружаем пользователей из простой таблицы profiles
+    const { data: usersData } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
     if (usersData) setUsers(usersData);
 
     // Загружаем всех учеников со всеми полями
@@ -88,13 +88,6 @@ export default function AdminPage() {
     if (error) {
       setErrorMsg('Логин немесе құпия сөз қате');
     } else {
-      // Проверяем, есть ли права админа (например через метаданные is_admin)
-      const isAdmin = data.user?.user_metadata?.is_admin === true;
-      if (!isAdmin) {
-        // Если хотите разрешить вход только админам, раскомментируйте строчки ниже:
-        // await supabase.auth.signOut();
-        // return setErrorMsg('Бұл бетке тек әкімшілер кіре алады!');
-      }
       setIsAuthenticated(true);
       loadAllData();
     }
@@ -226,20 +219,28 @@ export default function AdminPage() {
                   <tr style={thTr}>
                     <th style={thStyle}>ID</th>
                     <th style={thStyle}>Аты-жөні</th>
-                    <th style={thStyle}>Email / Телефон</th>
+                    <th style={thStyle}>Email</th>
+                    <th style={thStyle}>Телефон</th>
+                    <th style={thStyle}>Актив</th>
+                    <th style={thStyle}>Админ</th>
+                    <th style={thStyle}>Мұғалім</th>
                     <th style={thStyle}>Тіркелген күні</th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.length === 0 ? (
-                    <tr><td colSpan="4" style={tdStyle}>Деректер жоқ</td></tr>
+                    <tr><td colSpan="8" style={tdStyle}>Деректер жоқ</td></tr>
                   ) : (
                     users.map((u) => (
                       <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={tdStyle}>{u.id.substring(0, 8)}...</td>
-                        <td style={tdStyle}>{u.name || 'Көрсетілмеген'}</td>
-                        <td style={tdStyle}>{u.email || u.phone || '—'}</td>
-                        <td style={tdStyle}>{u.created_at ? new Date(u.created_at).toLocaleString() : '—'}</td>
+                        <td style={{ ...tdStyle, fontWeight: '600' }}>{u.name || 'Көрсетілмеген'}</td>
+                        <td style={tdStyle}>{u.email || '—'}</td>
+                        <td style={tdStyle}>{u.phone || '—'}</td>
+                        <td style={tdStyle}>{u.is_active ? '✅' : '❌'}</td>
+                        <td style={tdStyle}>{u.is_admin ? '⭐ Иә' : 'Жоқ'}</td>
+                        <td style={tdStyle}>{u.is_teacher ? '📚 Иә' : 'Жоқ'}</td>
+                        <td style={tdStyle}>{u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}</td>
                       </tr>
                     ))
                   )}
