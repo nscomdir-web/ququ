@@ -377,7 +377,26 @@ const handleUpdateProfile = async () => {
 
               <input placeholder="Мектеп" value={newStudent.school} onChange={(e)=>setNewStudent({...newStudent, school: e.target.value})} style={inputStyle} />
               <input placeholder="Қала" value={newStudent.city} onChange={(e)=>setNewStudent({...newStudent, city: e.target.value})} style={inputStyle} />
-              <input placeholder="Сынып (мысалы: 6)" value={newStudent.grade} onChange={(e)=>setNewStudent({...newStudent, grade: e.target.value})} style={inputStyle} />
+             
+                  <select
+  value={newStudent.language}
+  onChange={(e) => setNewStudent({ ...newStudent, language: e.target.value })}
+  style={{
+    width: '100%',
+    padding: '12px',
+    backgroundColor: '#0f172a',
+    border: '1px solid #334155',
+    borderRadius: '8px',
+    color: '#fff',
+    fontSize: '14px',
+    marginBottom: '12px',
+    outline: 'none'
+  }}
+>
+  <option value="Қазақша">Қазақша</option>
+  <option value="Русский">Русский</option>
+</select>
+                  <input placeholder="Сынып (мысалы: 6)" value={newStudent.grade} onChange={(e)=>setNewStudent({...newStudent, grade: e.target.value})} style={inputStyle} />
               
               <button type="submit" disabled={uploading} style={{ ...btnPrimary, marginTop: '10px', width: '100%', justifyContent: 'center', opacity: uploading ? 0.7 : 1 }}>
                 {uploading ? 'Жүктелуде...' : 'Қосу'}
