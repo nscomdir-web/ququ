@@ -26,7 +26,9 @@ export default function DashboardPage() {
   // Ученики
   const [students, setStudents] = useState([]);
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
-  const [newStudent, setNewStudent] = useState({ firstName: '', lastName: '', iin: '', school: '', city: '', photo: '' });
+  const [newStudent, setNewStudent] = useState({ firstName: '', lastName: '', iin: '', school: '', city: '' });
+  const [studentFile, setStudentFile] = useState(null); // Состояние для файла фото
+  const [uploading, setUploading] = useState(false); // Индикатор загрузки
 
   // Тесты
   const [exams, setExams] = useState([]);
@@ -43,24 +45,20 @@ export default function DashboardPage() {
     async function checkAuthAndLoadData() {
       const { data: { session } } = await supabase.auth.getSession();
       
-      // Если пользователь не авторизован — перенаправляем на главную страницу
       if (!session) {
         window.location.href = '/';
         return;
       }
 
-      // Устанавливаем данные пользователя
       setUser({
         name: session.user.user_metadata?.name || session.user.email || 'Пайдаланушы',
         email: session.user.email,
         phone: session.user.phone || ''
       });
 
-      // Загружаем тесты
       const { data: examsData } = await supabase.from('exams').select('*').order('exam_date', { ascending: true });
       if (examsData) setExams(examsData);
 
-      // Загружаем учеников текущего пользователя
       const { data: studentsData } = await supabase.from('students').select('*').eq('user_id', session.user.id);
       if (studentsData) setStudents(studentsData);
 
@@ -82,21 +80,50 @@ export default function DashboardPage() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
 
+    setUploading(true);
+    let photoUrl = '';
+
+    // Если выбран файл, загружаем его в хранилище avatars
+    if (studentFile) {
+      const fileExt = studentFile.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36.substring(2))}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, studentFile);
+
+      if (uploadError) {
+        setUploading(false);
+        return alert('Суретті жүктеу қатесі: ' + uploadError.message);
+      }
+
+      // Получаем публичную ссылку на файл
+      const { data: publicData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      photoUrl = publicData.publicUrl;
+    }
+
     const studentToInsert = {
       full_name: `${newStudent.firstName} ${newStudent.lastName}`,
       iin: newStudent.iin,
       school: newStudent.school,
       city: newStudent.city,
-      photo: newStudent.photo,
+      photo: photoUrl,
       user_id: session.user.id
     };
 
     const { data, error } = await supabase.from('students').insert([studentToInsert]).select();
+    setUploading(false);
+
     if (error) {
       alert('Қате орын алды: ' + error.message);
     } else if (data) {
       setStudents([...students, data[0]]);
-      setNewStudent({ firstName: '', lastName: '', iin: '', school: '', city: '', photo: '' });
+      setNewStudent({ firstName: '', lastName: '', iin: '', school: '', city: '' });
+      setStudentFile(null);
       setShowAddStudentModal(false);
     }
   };
@@ -214,7 +241,7 @@ export default function DashboardPage() {
                   <div key={s.id} style={{ ...cardStyle, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-                        <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', overflow: 'hidden' }}>
+                        <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', overflow: 'hidden', flexShrink: 0 }}>
                           {s.photo ? <img src={s.photo} alt="" style={{width: '100%', height: '100%', objectFit: 'cover'}} /> : '👤'}
                         </div>
                         <div>
@@ -286,10 +313,23 @@ export default function DashboardPage() {
               <input placeholder="Аты" value={newStudent.firstName} onChange={(e)=>setNewStudent({...newStudent, firstName: e.target.value})} style={inputStyle} required />
               <input placeholder="Фамилиясы" value={newStudent.lastName} onChange={(e)=>setNewStudent({...newStudent, lastName: e.target.value})} style={inputStyle} required />
               <input placeholder="ИИН (ЖСН)" value={newStudent.iin} onChange={(e)=>setNewStudent({...newStudent, iin: e.target.value})} style={inputStyle} required />
-              <input placeholder="Фото URL (сілтеме)" value={newStudent.photo} onChange={(e)=>setNewStudent({...newStudent, photo: e.target.value})} style={inputStyle} />
+              
+              <div>
+                <label style={labelStyle}>Оқушы фотосы (컴퓨터дан / с компьютера)</label>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={(e) => setStudentFile(e.target.files[0])} 
+                  style={{ ...inputStyle, padding: '8px', cursor: 'pointer' }} 
+                />
+              </div>
+
               <input placeholder="Мектеп" value={newStudent.school} onChange={(e)=>setNewStudent({...newStudent, school: e.target.value})} style={inputStyle} />
               <input placeholder="Қала" value={newStudent.city} onChange={(e)=>setNewStudent({...newStudent, city: e.target.value})} style={inputStyle} />
-              <button type="submit" style={{ ...btnPrimary, marginTop: '10px', width: '100%', justifyContent: 'center' }}>Қосу</button>
+              
+              <button type="submit" disabled={uploading} style={{ ...btnPrimary, marginTop: '10px', width: '100%', justifyContent: 'center', opacity: uploading ? 0.7 : 1 }}>
+                {uploading ? 'Жүктелуде...' : 'Қосу'}
+              </button>
             </form>
           </div>
         </div>
@@ -353,7 +393,6 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
