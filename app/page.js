@@ -37,13 +37,13 @@ export default function Home() {
     fetchExams();
   }, [supabase]);
 
-  // Функция регистрации: клиент сам регистрирует и записывает данные в profiles
   const handleRegister = async (e) => {
     e.preventDefault();
     setAuthMsg('');
 
-    // 1. Регистрация в Supabase Auth
-    const { data, error } = await supabase.auth.signUp({
+    // Регистрация: Supabase сам отправит письмо со ссылкой подтверждения,
+    // а триггер в БД автоматически создаст запись в profiles с is_active: false
+    const { error } = await supabase.auth.signUp({
       email: regEmail,
       password: regPassword,
       options: {
@@ -54,6 +54,14 @@ export default function Home() {
         emailRedirectTo: `${window.location.origin}/dashboard`
       }
     });
+
+    if (error) {
+      setAuthMsg('Қате: ' + error.message);
+      return;
+    }
+
+    setAuthMsg('Сәтті! Электронды почтаңызға растау сілтемесі жіберілді. Почтаңызды тексеріп, сілтеме арқылы кіріңіз.');
+  };
 
     if (error) {
       setAuthMsg('Қате: ' + error.message);
