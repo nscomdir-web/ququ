@@ -41,7 +41,7 @@ export default function DashboardPage() {
   // Пропуск
   const [ticketModal, setTicketModal] = useState(null);
 
-  useEffect(() => {
+useEffect(() => {
     async function checkAuthAndLoadData() {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -50,16 +50,36 @@ export default function DashboardPage() {
         return;
       }
 
-      setUser({
-        name: session.user.user_metadata?.name || session.user.email || 'Пайдаланушы',
-        email: session.user.email,
-        phone: session.user.phone || ''
-      });
+      // Достаем данные профиля из таблицы profiles по id пользователя
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
 
+      setUser({
+        name: profileData?.name || session.user.user_metadata?.name || session.user.email || 'Пайдаланушы',
+        email: session.user.email,
+        phone: profileData?.phone || session.user.user_metadata?.phone || ''
+      });
+const handleUpdateProfile = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ name: user.name, phone: user.phone })
+      .eq('id', session.user.id);
+
+    if (error) {
+      alert('Қате: ' + error.message);
+    } else {
+      alert('Профиль сәтті сақталды!');
+    }
+  };
       const { data: examsData } = await supabase.from('exams').select('*').order('exam_date', { ascending: true });
       if (examsData) setExams(examsData);
 
-      // Загружаем учеников, привязанных к текущему пользователю через parent_id
       const { data: studentsData } = await supabase.from('students').select('*').eq('parent_id', session.user.id);
       if (studentsData) setStudents(studentsData);
 
