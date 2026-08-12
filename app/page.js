@@ -38,10 +38,11 @@ export default function Home() {
   }, [supabase]);
 
   // Функция регистрации с отправкой подтверждения на email
-  const handleRegister = async (e) => {
+ const handleRegister = async (e) => {
     e.preventDefault();
     setAuthMsg('');
 
+    // 1. Регистрация в Supabase Auth
     const { data, error } = await supabase.auth.signUp({
       email: regEmail,
       password: regPassword,
@@ -56,9 +57,22 @@ export default function Home() {
 
     if (error) {
       setAuthMsg('Қате: ' + error.message);
-    } else {
-      setAuthMsg('Сәтті! Электронды почтаңызға растау сілтемесі жіберілді. Почтаңызды тексеріңіз.');
+      return;
     }
+
+    // 2. Сразу записываем данные в вашу таблицу public.users
+    if (data?.user) {
+      await supabase.from('users').insert([
+        {
+          auth_id: data.user.id,
+          first_name: regName,
+          whatsapp_number: regPhone,
+          email: regEmail
+        }
+      ]);
+    }
+
+    setAuthMsg('Сәтті! Электронды почтаңызға растау сілтемесі жіберілді. Почтаңызды тексеріңіз.');
   };
 
   // Функция входа в личный кабинет через логин и пароль
