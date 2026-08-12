@@ -1,8 +1,22 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient'; // Убедитесь, что путь верный
+import { createClient } from '@supabase/supabase-js';
+
+export const dynamic = 'force-dynamic';
+
+function getSupabaseClient() {
+  let rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+  let rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
+
+  if (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
+    rawUrl = `https://${rawUrl}`;
+  }
+
+  return createClient(rawUrl, rawKey);
+}
 
 export default function TeacherPage() {
+  const [supabase] = useState(() => getSupabaseClient());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -10,7 +24,7 @@ export default function TeacherPage() {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        window.location.href = '/login'; // Или путь к вашей странице входа
+        window.location.href = '/';
         return;
       }
 
@@ -22,7 +36,7 @@ export default function TeacherPage() {
 
       if (!profile || profile.is_teacher !== true) {
         alert('Сізде бұл парақшаға кіруге рұқсат жоқ!');
-        window.location.href = '/dashboard'; // Выкидываем обратно в обычный дашборд
+        window.location.href = '/dashboard';
         return;
       }
 
@@ -30,15 +44,20 @@ export default function TeacherPage() {
     }
 
     checkTeacherAccess();
-  }, []);
+  }, [supabase]);
 
-  if (loading) return <div>Жүктелуде...</div>;
+  if (loading) {
+    return (
+      <div style={{ backgroundColor: '#0f172a', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8', fontSize: '18px', fontWeight: 'bold', fontFamily: 'system-ui, sans-serif' }}>
+        Жүктелуде...
+      </div>
+    );
+  }
 
   return (
-    <div style={{ padding: '40px', backgroundColor: '#0f172a', minHeight: '100vh', color: '#fff' }}>
-      <h1>Мұғалімнің арнайы панелі</h1>
-      <p>Сәлеметсіз бе, Мұғалім! Мұнда сіз оқушылардың тізімін және тест нәтижелерін басқара аласыз.</p>
-      {/* Сюда вставляем таблицу учителей */}
+    <div style={{ padding: '40px', backgroundColor: '#0f172a', minHeight: '100vh', color: '#fff', fontFamily: 'system-ui, sans-serif' }}>
+      <h1 style={{ fontSize: '24px', fontWeight: '800', marginBottom: '16px' }}>Мұғалімнің арнайы панелі</h1>
+      <p style={{ color: '#94a3b8' }}>Сәлеметсіз бе! Бұл бет тек мұғалімдерге қолжетімді.</p>
     </div>
   );
 }
