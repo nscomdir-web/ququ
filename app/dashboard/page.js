@@ -26,9 +26,9 @@ export default function DashboardPage() {
   // Ученики
   const [students, setStudents] = useState([]);
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
-  const [newStudent, setNewStudent] = useState({ firstName: '', lastName: '', iin: '', school: '', city: '' });
-  const [studentFile, setStudentFile] = useState(null); // Состояние для файла фото
-  const [uploading, setUploading] = useState(false); // Индикатор загрузки
+  const [newStudent, setNewStudent] = useState({ firstName: '', lastName: '', iin: '', school: '', city: '', grade: '6', language: 'Қазақша' });
+  const [studentFile, setStudentFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   // Тесты
   const [exams, setExams] = useState([]);
@@ -59,7 +59,8 @@ export default function DashboardPage() {
       const { data: examsData } = await supabase.from('exams').select('*').order('exam_date', { ascending: true });
       if (examsData) setExams(examsData);
 
-      const { data: studentsData } = await supabase.from('students').select('*').eq('user_id', session.user.id);
+      // Загружаем учеников, привязанных к текущему пользователю через parent_id
+      const { data: studentsData } = await supabase.from('students').select('*').eq('parent_id', session.user.id);
       if (studentsData) setStudents(studentsData);
 
       setLoading(false);
@@ -83,7 +84,6 @@ export default function DashboardPage() {
     setUploading(true);
     let photoUrl = '';
 
-    // Если выбран файл, загружаем его в хранилище avatars
     if (studentFile) {
       const fileExt = studentFile.name.split('.').pop();
       const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
@@ -98,7 +98,6 @@ export default function DashboardPage() {
         return alert('Суретті жүктеу қатесі: ' + uploadError.message);
       }
 
-      // Получаем публичную ссылку на файл
       const { data: publicData } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
@@ -107,12 +106,15 @@ export default function DashboardPage() {
     }
 
     const studentToInsert = {
-      full_name: `${newStudent.firstName} ${newStudent.lastName}`,
+      first_name: newStudent.firstName,
+      second_name: newStudent.lastName,
       iin: newStudent.iin,
       school: newStudent.school,
       city: newStudent.city,
-      photo: photoUrl,
-      user_id: session.user.id
+      grade: newStudent.grade,
+      language: newStudent.language,
+      photo_url: photoUrl,
+      parent_id: session.user.id
     };
 
     const { data, error } = await supabase.from('students').insert([studentToInsert]).select();
@@ -122,7 +124,7 @@ export default function DashboardPage() {
       alert('Қате орын алды: ' + error.message);
     } else if (data) {
       setStudents([...students, data[0]]);
-      setNewStudent({ firstName: '', lastName: '', iin: '', school: '', city: '' });
+      setNewStudent({ firstName: '', lastName: '', iin: '', school: '', city: '', grade: '6', language: 'Қазақша' });
       setStudentFile(null);
       setShowAddStudentModal(false);
     }
@@ -139,19 +141,38 @@ export default function DashboardPage() {
     }
   };
 
-  const handlePayment = () => {
+  const handlePayment = async () => {
     if (!selectedStudentForReg) return alert('Оқушыны таңдаңыз!');
     
-    alert('Kaspi Pay жүйесіне өту...\nТөлем сәтті өтті.');
-    
     const studentObj = students.find(s => s.id.toString() === selectedStudentForReg.toString());
+    const fiveDigitCode = Math.floor(10000 + Math.random() * 90000).toString();
+
+    // Записываем билет в таблицу tickets в Supabase
+    const ticketPayload = {
+      student_id: studentObj.id,
+      exam_id: registerModal.id,
+      five_digit_code: fiveDigitCode,
+      payment_status: 'paid',
+      classroom: 'Аудитория 101',
+      attendance_status: false
+    };
+
+    const { data, error } = await supabase.from('tickets').insert([ticketPayload]).select();
+
+    if (error) {
+      return alert('Төлемді сақтау қатесі: ' + error.message);
+    }
+
+    alert('Kaspi Pay жүйесі арқылы төлем сәтті өтті!');
+
     const ticketData = {
-      id: Date.now(),
-      studentName: studentObj?.full_name || 'Оқушы',
+      id: data[0]?.id || Date.now(),
+      studentName: `${studentObj?.first_name || ''} ${studentObj?.second_name || ''}`,
       iin: studentObj?.iin,
       examTitle: registerModal.title,
       examDate: registerModal.exam_date,
       schoolType: selectedSchoolType,
+      fiveDigitCode: fiveDigitCode,
       date: new Date().toLocaleDateString()
     };
 
@@ -160,7 +181,7 @@ export default function DashboardPage() {
   };
 
   const downloadPDF = (ticket) => {
-    alert(`"${ticket.examTitle}" пропускі жүктелуде (PDF форматта)...`);
+    alert(`"${ticket.examTitle}" пропускі жүктелуде (PDF форматта)... Код: ${ticket.fiveDigitCode}`);
   };
 
   if (loading) {
@@ -242,15 +263,16 @@ export default function DashboardPage() {
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
                         <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', overflow: 'hidden', flexShrink: 0 }}>
-                          {s.photo ? <img src={s.photo} alt="" style={{width: '100%', height: '100%', objectFit: 'cover'}} /> : '👤'}
+                          {s.photo_url ? <img src={s.photo_url} alt="" style={{width: '100%', height: '100%', objectFit: 'cover'}} /> : '👤'}
                         </div>
                         <div>
-                          <h3 style={{ margin: 0, fontSize: '18px', color: '#fff' }}>{s.full_name}</h3>
+                          <h3 style={{ margin: 0, fontSize: '18px', color: '#fff' }}>{s.first_name} {s.second_name}</h3>
                           <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#94a3b8' }}>ИИН: {s.iin}</p>
                         </div>
                       </div>
                       <p style={{ fontSize: '14px', color: '#cbd5e1', margin: '4px 0' }}>Мектеп: {s.school || '—'}</p>
                       <p style={{ fontSize: '14px', color: '#cbd5e1', margin: '4px 0' }}>Қала: {s.city || '—'}</p>
+                      <p style={{ fontSize: '14px', color: '#cbd5e1', margin: '4px 0' }}>Сынып: {s.grade || '—'} | Тіл: {s.language || '—'}</p>
                     </div>
                     <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                       <button onClick={() => alert('Өзгерту функциясы')} style={btnSmallBlue}>Өзгерту</button>
@@ -274,7 +296,7 @@ export default function DashboardPage() {
                   <div key={exam.id} style={{ ...cardStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', opacity: isActive ? 1 : 0.6 }}>
                     <div>
                       <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', color: '#fff' }}>{exam.title}</h3>
-                      <p style={{ margin: 0, fontSize: '14px', color: '#94a3b8' }}>Күні: {exam.exam_date || '—'} | Бағасы: {exam.price} ₸</p>
+                      <p style={{ margin: 0, fontSize: '14px', color: '#94a3b8' }}>Күні: {exam.exam_date || '—'} | Уақыты: {exam.exam_time || '—'} | Бағасы: {exam.price} ₸</p>
                     </div>
                     <div>
                       {isActive ? (
@@ -315,7 +337,7 @@ export default function DashboardPage() {
               <input placeholder="ИИН (ЖСН)" value={newStudent.iin} onChange={(e)=>setNewStudent({...newStudent, iin: e.target.value})} style={inputStyle} required />
               
               <div>
-                <label style={labelStyle}>Оқушы фотосы (컴퓨터дан / с компьютера)</label>
+                <label style={labelStyle}>Оқушы фотосы</label>
                 <input 
                   type="file" 
                   accept="image/*" 
@@ -326,6 +348,7 @@ export default function DashboardPage() {
 
               <input placeholder="Мектеп" value={newStudent.school} onChange={(e)=>setNewStudent({...newStudent, school: e.target.value})} style={inputStyle} />
               <input placeholder="Қала" value={newStudent.city} onChange={(e)=>setNewStudent({...newStudent, city: e.target.value})} style={inputStyle} />
+              <input placeholder="Сынып (мысалы: 6)" value={newStudent.grade} onChange={(e)=>setNewStudent({...newStudent, grade: e.target.value})} style={inputStyle} />
               
               <button type="submit" disabled={uploading} style={{ ...btnPrimary, marginTop: '10px', width: '100%', justifyContent: 'center', opacity: uploading ? 0.7 : 1 }}>
                 {uploading ? 'Жүктелуде...' : 'Қосу'}
@@ -348,7 +371,7 @@ export default function DashboardPage() {
                 <label style={labelStyle}>Оқушыны таңдаңыз</label>
                 <select value={selectedStudentForReg} onChange={(e)=>setSelectedStudentForReg(e.target.value)} style={inputStyle}>
                   <option value="">-- Таңдаңыз --</option>
-                  {students.map(s => <option key={s.id} value={s.id}>{s.full_name} ({s.iin})</option>)}
+                  {students.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.second_name} ({s.iin})</option>)}
                 </select>
               </div>
               <div>
@@ -385,6 +408,7 @@ export default function DashboardPage() {
               <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>Тест:</strong> {ticketModal.examTitle}</p>
               <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>Бағыт:</strong> {ticketModal.schoolType}</p>
               <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>Күні:</strong> {ticketModal.examDate}</p>
+              <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>Код:</strong> <span style={{color: '#38bdf8', fontWeight: 'bold'}}>{ticketModal.fiveDigitCode}</span></p>
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => downloadPDF(ticketModal)} style={{ ...btnPrimary, flex: 1, justifyContent: 'center' }}>📥 PDF жүктеу</button>
