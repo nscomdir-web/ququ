@@ -61,7 +61,7 @@ export default function Home() {
     }
   };
 
-  // Функция входа в личный кабинет
+  // Функция входа в личный кабинет через логин и пароль
   const handleLogin = async (e) => {
     e.preventDefault();
     setAuthMsg('');
@@ -102,9 +102,7 @@ export default function Home() {
         </div>
         <div style={{ display: 'flex', gap: '16px' }}>
           <button onClick={() => { setActiveModal('register'); setAuthMsg(''); }} style={{ ...btnBase, backgroundColor: '#38bdf8', color: '#0f172a' }}>👤 ЖАҢА ПАЙДАЛАНУШЫ</button>
-          <a href="/dashboard" style={{ textDecoration: 'none' }}>
-            <button style={{ ...btnBase, backgroundColor: '#6366f1', color: '#fff', cursor: 'pointer' }}>🔒 ЖЕКЕ КАБИНЕТКЕ КІРУ</button>
-          </a>
+          <button onClick={() => { setActiveModal('login'); setAuthMsg(''); }} style={{ ...btnBase, backgroundColor: '#6366f1', color: '#fff' }}>🔒 ЖЕКЕ КАБИНЕТКЕ КІРУ</button>
         </div>
       </section>
 
@@ -211,9 +209,9 @@ export default function Home() {
 
             <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '13px', color: '#94a3b8' }}>
               {activeModal === 'register' ? (
-                <span>Аккаунтыңыз бар ма? <button onClick={() => setActiveModal('login')} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontWeight: 'bold' }}>Кіру</button></span>
+                <span>Аккаунтыңыз бар ма? <button onClick={() => { setActiveModal('login'); setAuthMsg(''); }} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontWeight: 'bold' }}>Кіру</button></span>
               ) : (
-                <span>Аккаунт жоқ па? <button onClick={() => setActiveModal('register')} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontWeight: 'bold' }}>Тіркелу</button></span>
+                <span>Аккаунт жоқ па? <button onClick={() => { setActiveModal('register'); setAuthMsg(''); }} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontWeight: 'bold' }}>Тіркелу</button></span>
               )}
             </div>
           </div>
