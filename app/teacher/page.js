@@ -23,7 +23,6 @@ export default function TeacherLoginPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [isTeacher, setIsTeacher] = useState(false);
 
-  // Тексеру: егер қолданушы бұрын кірген болса
   useEffect(() => {
     async function checkExistingSession() {
       const { data: { session } } = await supabase.auth.getSession();
@@ -39,7 +38,6 @@ export default function TeacherLoginPage() {
           setIsTeacher(true);
         } else {
           await supabase.auth.signOut();
-          setErrorMsg('Сізге кіруге рұқсат жоқ!');
         }
       }
       setLoading(false);
@@ -48,7 +46,6 @@ export default function TeacherLoginPage() {
     checkExistingSession();
   }, [supabase]);
 
-  // Кіру функциясы
   const handleLogin = async (e) => {
     e.preventDefault();
     setErrorMsg('');
@@ -65,16 +62,21 @@ export default function TeacherLoginPage() {
       return;
     }
 
-    // is_teacher бағанын тексеру
+    console.log("Auth User ID:", authData.session.user.id);
+
+    // Делаем запрос и выводим результат в консоль браузера
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('is_teacher')
       .eq('id', authData.session.user.id)
       .single();
 
+    console.log("Profile Data from DB:", profile);
+    console.log("Profile Error:", profileError);
+
     if (profileError || !profile || profile.is_teacher !== true) {
       await supabase.auth.signOut();
-      setErrorMsg('Сізге кіруге рұқсат жоқ!');
+      setErrorMsg(`Сізге кіруге рұқсат жоқ! (Қате: ${profileError?.message || 'Мәлімет табылмады'})`);
       setLoading(false);
       return;
     }
@@ -83,7 +85,6 @@ export default function TeacherLoginPage() {
     setLoading(false);
   };
 
-  // Шығу функциясы
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setIsTeacher(false);
@@ -99,7 +100,6 @@ export default function TeacherLoginPage() {
     );
   }
 
-  // Егер мұғалім болып кірсе
   if (isTeacher) {
     return (
       <div style={{ padding: '40px', backgroundColor: '#0f172a', minHeight: '100vh', color: '#fff', fontFamily: 'system-ui, sans-serif' }}>
@@ -116,7 +116,6 @@ export default function TeacherLoginPage() {
     );
   }
 
-  // Логин экраны
   return (
     <div style={{ backgroundColor: '#0f172a', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif', padding: '16px' }}>
       <div style={{ backgroundColor: '#1e293b', padding: '32px', borderRadius: '16px', border: '1px solid #334155', width: '100%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.3)' }}>
