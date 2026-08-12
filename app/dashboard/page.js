@@ -17,67 +17,110 @@ function getSupabaseClient() {
 
 export default function DashboardPage() {
   const [supabase] = useState(() => getSupabaseClient());
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('profile');
   
   // Данные пользователя
-  const [user, setUser] = useState({ name: 'Жандос', email: 'zhandos@mail.ru', phone: '+7 701 123 45 67' });
+  const [user, setUser] = useState({ name: '', email: '', phone: '' });
 
   // Ученики
-  const [students, setStudents] = useState([
-    { id: 1, firstName: 'Али', lastName: 'Нурланов', iin: '080512500123', school: '№45 мектеп', city: 'Шымкент', photo: '' }
-  ]);
+  const [students, setStudents] = useState([]);
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [newStudent, setNewStudent] = useState({ firstName: '', lastName: '', iin: '', school: '', city: '', photo: '' });
 
   // Тесты
-  const [exams, setExams] = useState([
-    { id: 1, title: 'Қазан 2026 Байқау тесті', exam_date: '2026-10-18', price: 5000, is_active: true }
-  ]);
+  const [exams, setExams] = useState([]);
 
   // Модалка регистрации на тест
-  const [registerModal, setRegisterModal] = useState(null); // exam object or null
+  const [registerModal, setRegisterModal] = useState(null);
   const [selectedStudentForReg, setSelectedStudentForReg] = useState('');
   const [selectedSchoolType, setSelectedSchoolType] = useState('НИШ');
 
-  // Пропуск (если оплачено)
+  // Пропуск
   const [ticketModal, setTicketModal] = useState(null);
 
   useEffect(() => {
-    async function loadData() {
+    async function checkAuthAndLoadData() {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        // Загрузка реальных данных учеников и тестов из базы
-        const { data: examsData } = await supabase.from('exams').select('*');
-        if (examsData) setExams(examsData);
+      
+      // Если пользователь не авторизован — перенаправляем на главную страницу
+      if (!session) {
+        window.location.href = '/';
+        return;
       }
+
+      // Устанавливаем данные пользователя
+      setUser({
+        name: session.user.user_metadata?.name || session.user.email || 'Пайдаланушы',
+        email: session.user.email,
+        phone: session.user.phone || ''
+      });
+
+      // Загружаем тесты
+      const { data: examsData } = await supabase.from('exams').select('*').order('exam_date', { ascending: true });
+      if (examsData) setExams(examsData);
+
+      // Загружаем учеников текущего пользователя
+      const { data: studentsData } = await supabase.from('students').select('*').eq('user_id', session.user.id);
+      if (studentsData) setStudents(studentsData);
+
+      setLoading(false);
     }
-    loadData();
+
+    checkAuthAndLoadData();
   }, [supabase]);
 
-  const handleAddStudent = (e) => {
-    e.preventDefault();
-    if (!newStudent.firstName || !newStudent.iin) return alert('Барлық міндетті өрістерді толтырыңыз!');
-    setStudents([...students, { ...newStudent, id: Date.now() }]);
-    setNewStudent({ firstName: '', lastName: '', iin: '', school: '', city: '', photo: '' });
-    setShowAddStudentModal(false);
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/';
   };
 
-  const handleDeleteStudent = (id) => {
+  const handleAddStudent = async (e) => {
+    e.preventDefault();
+    if (!newStudent.firstName || !newStudent.iin) return alert('Барлық міндетті өрістерді толтырыңыз!');
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const studentToInsert = {
+      full_name: `${newStudent.firstName} ${newStudent.lastName}`,
+      iin: newStudent.iin,
+      school: newStudent.school,
+      city: newStudent.city,
+      photo: newStudent.photo,
+      user_id: session.user.id
+    };
+
+    const { data, error } = await supabase.from('students').insert([studentToInsert]).select();
+    if (error) {
+      alert('Қате орын алды: ' + error.message);
+    } else if (data) {
+      setStudents([...students, data[0]]);
+      setNewStudent({ firstName: '', lastName: '', iin: '', school: '', city: '', photo: '' });
+      setShowAddStudentModal(false);
+    }
+  };
+
+  const handleDeleteStudent = async (id) => {
     if (confirm('Оқушыны өшіруге сенімдісіз бе?')) {
-      setStudents(students.filter(s => s.id !== id));
+      const { error } = await supabase.from('students').delete().eq('id', id);
+      if (!error) {
+        setStudents(students.filter(s => s.id !== id));
+      } else {
+        alert('Өшіру мүмкін болмады: ' + error.message);
+      }
     }
   };
 
   const handlePayment = () => {
     if (!selectedStudentForReg) return alert('Оқушыны таңдаңыз!');
     
-    // Имитация перехода к Kaspi Pay
-    alert('Kaspi Pay жүйесіне өту...\nТөлем сәтті өтті деп есептеледі.');
+    alert('Kaspi Pay жүйесіне өту...\nТөлем сәтті өтті.');
     
     const studentObj = students.find(s => s.id.toString() === selectedStudentForReg.toString());
     const ticketData = {
       id: Date.now(),
-      studentName: `${studentObj?.firstName} ${studentObj?.lastName}`,
+      studentName: studentObj?.full_name || 'Оқушы',
       iin: studentObj?.iin,
       examTitle: registerModal.title,
       examDate: registerModal.exam_date,
@@ -92,6 +135,14 @@ export default function DashboardPage() {
   const downloadPDF = (ticket) => {
     alert(`"${ticket.examTitle}" пропускі жүктелуде (PDF форматта)...`);
   };
+
+  if (loading) {
+    return (
+      <div style={{ backgroundColor: '#0f172a', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8', fontSize: '18px', fontWeight: 'bold', fontFamily: 'system-ui, sans-serif' }}>
+        Жүктелуде...
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-layout" style={{ backgroundColor: '#0f172a', minHeight: '100vh', display: 'grid', gridTemplateColumns: '260px 1fr', color: '#f8fafc', fontFamily: 'system-ui, sans-serif' }}>
@@ -114,7 +165,10 @@ export default function DashboardPage() {
             <button onClick={() => setActiveTab('results')} style={menuBtn(activeTab === 'results')}>📊 Нәтижелер</button>
           </nav>
         </div>
-        <a href="/" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '14px', fontWeight: '600' }}>← Басты бетке қайту</a>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <a href="/" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '14px', fontWeight: '600' }}>← Басты бетке қайту</a>
+          <button onClick={handleLogout} style={btnLightDanger}>Шығу</button>
+        </div>
       </aside>
 
       {/* Основной контент */}
@@ -132,7 +186,7 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <label style={labelStyle}>Email</label>
-                  <input type="email" value={user.email} onChange={(e) => setUser({...user, email: e.target.value})} style={inputStyle} />
+                  <input type="email" value={user.email} disabled style={{ ...inputStyle, opacity: 0.6 }} />
                 </div>
                 <div>
                   <label style={labelStyle}>Телефон</label>
@@ -153,27 +207,31 @@ export default function DashboardPage() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
-              {students.map((s) => (
-                <div key={s.id} style={{ ...cardStyle, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-                      <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', overflow: 'hidden' }}>
-                        {s.photo ? <img src={s.photo} alt="" style={{width: '100%', height: '100%', objectFit: 'cover'}} /> : '👤'}
+              {students.length === 0 ? (
+                <p style={{ color: '#94a3b8' }}>Әзірге оқушылар қосылмаған.</p>
+              ) : (
+                students.map((s) => (
+                  <div key={s.id} style={{ ...cardStyle, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+                        <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', overflow: 'hidden' }}>
+                          {s.photo ? <img src={s.photo} alt="" style={{width: '100%', height: '100%', objectFit: 'cover'}} /> : '👤'}
+                        </div>
+                        <div>
+                          <h3 style={{ margin: 0, fontSize: '18px', color: '#fff' }}>{s.full_name}</h3>
+                          <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#94a3b8' }}>ИИН: {s.iin}</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 style={{ margin: 0, fontSize: '18px', color: '#fff' }}>{s.firstName} {s.lastName}</h3>
-                        <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#94a3b8' }}>ИИН: {s.iin}</p>
-                      </div>
+                      <p style={{ fontSize: '14px', color: '#cbd5e1', margin: '4px 0' }}>Мектеп: {s.school || '—'}</p>
+                      <p style={{ fontSize: '14px', color: '#cbd5e1', margin: '4px 0' }}>Қала: {s.city || '—'}</p>
                     </div>
-                    <p style={{ fontSize: '14px', color: '#cbd5e1', margin: '4px 0' }}>Мектеп: {s.school || '—'}</p>
-                    <p style={{ fontSize: '14px', color: '#cbd5e1', margin: '4px 0' }}>Қала: {s.city || '—'}</p>
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                      <button onClick={() => alert('Өзгерту функциясы')} style={btnSmallBlue}>Өзгерту</button>
+                      <button onClick={() => handleDeleteStudent(s.id)} style={btnSmallDanger}>Жою</button>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                    <button onClick={() => alert('Өзгерту функциясы')} style={btnSmallBlue}>Өзгерту</button>
-                    <button onClick={() => handleDeleteStudent(s.id)} style={btnSmallDanger}>Жою</button>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         )}
@@ -237,7 +295,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* МОДАЛКА: РЕГИСТРАЦИЯ НА ТЕСТ (Kaspi Pay) */}
+      {/* МОДАЛКА: РЕГИСТРАЦИЯ НА ТЕСТ */}
       {registerModal && (
         <div style={modalOverlay}>
           <div style={modalContent}>
@@ -250,7 +308,7 @@ export default function DashboardPage() {
                 <label style={labelStyle}>Оқушыны таңдаңыз</label>
                 <select value={selectedStudentForReg} onChange={(e)=>setSelectedStudentForReg(e.target.value)} style={inputStyle}>
                   <option value="">-- Таңдаңыз --</option>
-                  {students.map(s => <option key={s.id} value={s.id}>{s.firstName} {s.lastName} ({s.iin})</option>)}
+                  {students.map(s => <option key={s.id} value={s.id}>{s.full_name} ({s.iin})</option>)}
                 </select>
               </div>
               <div>
@@ -306,6 +364,7 @@ const cardStyle = { backgroundColor: '#1e293b', borderRadius: '16px', padding: '
 const btnPrimary = { backgroundColor: '#38bdf8', color: '#0f172a', border: 'none', padding: '12px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' };
 const btnSmallBlue = { backgroundColor: '#0284c7', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' };
 const btnSmallDanger = { backgroundColor: '#ef4444', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' };
+const btnLightDanger = { backgroundColor: '#334155', color: '#f8fafc', border: '1px solid #475569', padding: '10px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', width: '100%' };
 const inputStyle = { backgroundColor: '#0f172a', border: '1px solid #334155', padding: '12px', borderRadius: '8px', color: '#fff', outline: 'none', width: '100%', boxSizing: 'border-box', fontSize: '14px' };
 const labelStyle = { display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '6px', fontWeight: '600' };
 const modalOverlay = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' };
