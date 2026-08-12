@@ -37,13 +37,13 @@ export default function Home() {
     fetchExams();
   }, [supabase]);
 
-  // Функция регистрации с отправкой подтверждения на email и записью в profiles с is_active: false
+  // Функция регистрации (безопасная, вся работа с таблицей profiles теперь идет на стороне БД)
   const handleRegister = async (e) => {
     e.preventDefault();
     setAuthMsg('');
 
-    // 1. Регистрация в Supabase Auth
-    const { data, error } = await supabase.auth.signUp({
+    // Регистрация в Supabase Auth (имя и телефон передаются в options.data для триггера)
+    const { error } = await supabase.auth.signUp({
       email: regEmail,
       password: regPassword,
       options: {
@@ -58,24 +58,6 @@ export default function Home() {
     if (error) {
       setAuthMsg('Қате: ' + error.message);
       return;
-    }
-
-    // 2. Записываем данные в новую таблицу public.profiles со статусом is_active: false
-    if (data?.user) {
-      const { error: profileError } = await supabase.from('profiles').insert([
-        {
-          id: data.user.id,
-          name: regName,
-          phone: regPhone,
-          is_active: false, // Изначально false, станет true после подтверждения email через триггер
-          is_teacher: false
-        }
-      ]);
-
-      if (profileError) {
-        setAuthMsg('Қате (Профиль): ' + profileError.message);
-        return;
-      }
     }
 
     setAuthMsg('Сәтті! Электронды почтаңызға растау сілтемесі жіберілді. Почтаңызды тексеріңіз.');
