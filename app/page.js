@@ -18,7 +18,14 @@ function getSupabaseClient() {
 export default function Home() {
   const [supabase] = useState(() => getSupabaseClient());
   const [exams, setExams] = useState([]);
-  const [activeModal, setActiveModal] = useState(null);
+  const [activeModal, setActiveModal] = useState(null); // 'register' or 'login'
+
+  // Поля формы регистрации / входа
+  const [regName, setRegName] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [authMsg, setAuthMsg] = useState('');
 
   useEffect(() => {
     async function fetchExams() {
@@ -29,6 +36,47 @@ export default function Home() {
     }
     fetchExams();
   }, [supabase]);
+
+  // Функция регистрации с отправкой подтверждения на email
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setAuthMsg('');
+
+    const { data, error } = await supabase.auth.signUp({
+      email: regEmail,
+      password: regPassword,
+      options: {
+        data: {
+          name: regName,
+          phone: regPhone
+        },
+        emailRedirectTo: `${window.location.origin}/dashboard`
+      }
+    });
+
+    if (error) {
+      setAuthMsg('Қате: ' + error.message);
+    } else {
+      setAuthMsg('Сәтті! Электронды почтаңызға растау сілтемесі жіберілді. Почтаңызды тексеріңіз.');
+    }
+  };
+
+  // Функция входа в личный кабинет
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setAuthMsg('');
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: regEmail,
+      password: regPassword,
+    });
+
+    if (error) {
+      setAuthMsg('Логин немесе құпия сөз қате / Почта расталмаған');
+    } else {
+      window.location.href = '/dashboard';
+    }
+  };
 
   return (
     <div style={{ backgroundColor: '#0f172a', minHeight: '100vh', color: '#f8fafc', fontFamily: 'system-ui, sans-serif' }}>
@@ -53,7 +101,7 @@ export default function Home() {
           <p style={{ color: '#94a3b8', margin: 0, fontSize: '16px' }}>Жүйеге тіркеліңіз немесе жеке кабинетке кіріңіз</p>
         </div>
         <div style={{ display: 'flex', gap: '16px' }}>
-          <button onClick={() => setActiveModal('register')} style={{ ...btnBase, backgroundColor: '#38bdf8', color: '#0f172a' }}>👤 ЖАҢА ПАЙДАЛАНУШЫ</button>
+          <button onClick={() => { setActiveModal('register'); setAuthMsg(''); }} style={{ ...btnBase, backgroundColor: '#38bdf8', color: '#0f172a' }}>👤 ЖАҢА ПАЙДАЛАНУШЫ</button>
           <a href="/dashboard" style={{ textDecoration: 'none' }}>
             <button style={{ ...btnBase, backgroundColor: '#6366f1', color: '#fff', cursor: 'pointer' }}>🔒 ЖЕКЕ КАБИНЕТКЕ КІРУ</button>
           </a>
@@ -119,22 +167,55 @@ export default function Home() {
         </div>
       </main>
 
-      {/* Модальные окна */}
+      {/* Модальное окно авторизации/регистрации */}
       {activeModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: '#1e293b', padding: '32px', borderRadius: '16px', width: '100%', maxWidth: '400px', border: '1px solid #334155' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}>
+          <div style={{ backgroundColor: '#1e293b', padding: '32px', borderRadius: '16px', width: '100%', maxWidth: '420px', border: '1px solid #334155', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, fontSize: '20px', color: '#fff' }}>{activeModal === 'login' ? 'Жүйеге кіру' : 'Тіркелу'}</h3>
+              <h3 style={{ margin: 0, fontSize: '20px', color: '#fff' }}>{activeModal === 'login' ? 'Жүйеге кіру' : 'Жаңа пайдаланушы тіркелуі'}</h3>
               <button onClick={() => setActiveModal(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '20px', cursor: 'pointer' }}>✕</button>
             </div>
-            <form style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {activeModal === 'register' && <input placeholder="Аты-жөніңіз" style={inputStyle} />}
-              <input placeholder="Телефон / Email" style={inputStyle} />
-              <input type="password" placeholder="Құпия сөз" style={inputStyle} />
-              <button type="button" style={{ ...btnBase, backgroundColor: '#38bdf8', color: '#0f172a', marginTop: '10px', width: '100%', justifyContent: 'center' }}>
-                {activeModal === 'login' ? 'Кіру' : 'Тіркелуді аяқтау'}
+
+            {authMsg && (
+              <div style={{ marginBottom: '16px', padding: '10px', borderRadius: '8px', backgroundColor: authMsg.includes('Сәтті') ? '#065f46' : '#7f1d1d', color: '#fff', fontSize: '13px' }}>
+                {authMsg}
+              </div>
+            )}
+
+            <form onSubmit={activeModal === 'login' ? handleLogin : handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {activeModal === 'register' && (
+                <>
+                  <div>
+                    <label style={labelStyle}>Аты-жөніңіз</label>
+                    <input placeholder="Мысалы: Айдын Серикұлы" value={regName} onChange={(e) => setRegName(e.target.value)} style={inputStyle} required />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Телефон нөмірі</label>
+                    <input placeholder="+7 (700) 000-00-00" value={regPhone} onChange={(e) => setRegPhone(e.target.value)} style={inputStyle} required />
+                  </div>
+                </>
+              )}
+              <div>
+                <label style={labelStyle}>Электронды пошта (Email)</label>
+                <input type="email" placeholder="name@example.com" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} style={inputStyle} required />
+              </div>
+              <div>
+                <label style={labelStyle}>Құпия сөз</label>
+                <input type="password" placeholder="••••••••" value={regPassword} onChange={(e) => setRegPassword(e.target.value)} style={inputStyle} required />
+              </div>
+
+              <button type="submit" style={{ ...btnBase, backgroundColor: '#38bdf8', color: '#0f172a', marginTop: '10px', width: '100%', justifyContent: 'center' }}>
+                {activeModal === 'login' ? 'Кіру' : 'Тіркелу және поштаны растау'}
               </button>
             </form>
+
+            <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '13px', color: '#94a3b8' }}>
+              {activeModal === 'register' ? (
+                <span>Аккаунтыңыз бар ма? <button onClick={() => setActiveModal('login')} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontWeight: 'bold' }}>Кіру</button></span>
+              ) : (
+                <span>Аккаунт жоқ па? <button onClick={() => setActiveModal('register')} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontWeight: 'bold' }}>Тіркелу</button></span>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -145,4 +226,5 @@ export default function Home() {
 const btnBase = { padding: '14px 24px', borderRadius: '10px', border: 'none', fontWeight: '700', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' };
 const thStyle = { padding: '16px', fontSize: '12px', fontWeight: '700', letterSpacing: '0.5px' };
 const tdStyle = { padding: '16px', color: '#cbd5e1' };
-const inputStyle = { backgroundColor: '#0f172a', border: '1px solid #334155', padding: '12px 16px', borderRadius: '8px', color: '#fff', outline: 'none', fontSize: '14px' };
+const inputStyle = { backgroundColor: '#0f172a', border: '1px solid #334155', padding: '12px 16px', borderRadius: '8px', color: '#fff', outline: 'none', fontSize: '14px', width: '100%', boxSizing: 'border-box' };
+const labelStyle = { display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '4px', fontWeight: '600' };
