@@ -37,13 +37,13 @@ export default function Home() {
     fetchExams();
   }, [supabase]);
 
-  // Функция регистрации (безопасная, вся работа с таблицей profiles теперь идет на стороне БД)
+  // Функция регистрации: клиент сам регистрирует и записывает данные в profiles
   const handleRegister = async (e) => {
     e.preventDefault();
     setAuthMsg('');
 
-    // Регистрация в Supabase Auth (имя и телефон передаются в options.data для триггера)
-    const { error } = await supabase.auth.signUp({
+    // 1. Регистрация в Supabase Auth
+    const { data, error } = await supabase.auth.signUp({
       email: regEmail,
       password: regPassword,
       options: {
@@ -58,6 +58,24 @@ export default function Home() {
     if (error) {
       setAuthMsg('Қате: ' + error.message);
       return;
+    }
+
+    // 2. Сразу записываем данные в таблицу public.profiles из браузера
+    if (data?.user) {
+      const { error: profileError } = await supabase.from('profiles').insert([
+        {
+          id: data.user.id,
+          name: regName,
+          phone: regPhone,
+          is_active: false,
+          is_teacher: false
+        }
+      ]);
+
+      if (profileError) {
+        setAuthMsg('Қате (Профиль): ' + profileError.message);
+        return;
+      }
     }
 
     setAuthMsg('Сәтті! Электронды почтаңызға растау сілтемесі жіберілді. Почтаңызды тексеріңіз.');
@@ -227,4 +245,4 @@ const btnBase = { padding: '14px 24px', borderRadius: '10px', border: 'none', fo
 const thStyle = { padding: '16px', fontSize: '12px', fontWeight: '700', letterSpacing: '0.5px' };
 const tdStyle = { padding: '16px', color: '#cbd5e1' };
 const inputStyle = { backgroundColor: '#0f172a', border: '1px solid #334155', padding: '12px 16px', borderRadius: '8px', color: '#fff', outline: 'none', fontSize: '14px', width: '100%', boxSizing: 'border-box' };
-const labelStyle = { display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '4px', fontWeight: '600' };
+const labelStyle = { display: 'block', divider: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '4px', fontWeight: '600' };
