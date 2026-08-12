@@ -86,7 +86,7 @@ export default function DashboardPage() {
     // Если выбран файл, загружаем его в хранилище avatars
     if (studentFile) {
       const fileExt = studentFile.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36.substring(2))}.${fileExt}`;
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `${fileName}`;
 
       const { error: uploadError } = await supabase.storage
