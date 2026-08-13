@@ -75,7 +75,7 @@ export default function DashboardPage() {
       const { data: studentsData } = await supabase.from('students').select('*').eq('parent_id', session.user.id);
       if (studentsData) setStudents(studentsData);
 
-      // Брондарды жүктеу (tickets + exams + students)
+      // Брондарды жүктеу
       await loadBookings(session.user.id);
 
       setLoading(false);
@@ -85,7 +85,6 @@ export default function DashboardPage() {
   }, [supabase]);
 
   async function loadBookings(parentId) {
-    // Сәтті төленген билеттерді алу
     const { data: ticketsData, error } = await supabase
       .from('tickets')
       .select(`
@@ -96,7 +95,6 @@ export default function DashboardPage() {
       .eq('payment_status', 'paid');
 
     if (!error && ticketsData) {
-      // Тек осы ата-ананың балаларына тиесілі билеттерді қалдырамыз
       const filtered = ticketsData.filter(t => t.students && t.students.parent_id === parentId);
       setBookings(filtered);
     }
@@ -190,7 +188,6 @@ export default function DashboardPage() {
     }
   };
 
-  // СИМУЛЯЦИЯ ОПЛАТЫ И ГЕНЕРАЦИЯ КОДА (QU-N-ON-12345)
   const handlePayment = async () => {
     if (!selectedStudentForReg) return alert('Оқушыны таңдаңыз!');
     
@@ -199,7 +196,6 @@ export default function DashboardPage() {
 
     const studentObj = students.find(s => s.id.toString() === selectedStudentForReg.toString());
     
-    // Формат кода: QU + N/B/R + ON/OF + 5 цифр
     const schoolLetter = selectedSchoolType === 'НИШ' ? 'N' : selectedSchoolType === 'БИЛ' ? 'B' : 'R';
     const formatLetter = selectedFormat === 'Онлайн' ? 'ON' : 'OF';
     const randomDigits = Math.floor(10000 + Math.random() * 90000);
@@ -222,11 +218,14 @@ export default function DashboardPage() {
       return alert('Төлемді сақтау қатесі: ' + error.message);
     }
 
-    // Брондар тізімін жаңарту
     await loadBookings(session.user.id);
 
-    const ticketData = {
-      id: data[0]?.id || Date.now(),
+    const createdTicket = data[0];
+    setRegisterModal(null);
+    
+    // Сразу открываем сгенерированный пропуск
+    setTicketModal({
+      id: createdTicket?.id,
       studentName: `${studentObj?.first_name || ''} ${studentObj?.second_name || ''}`,
       iin: studentObj?.iin,
       photoUrl: studentObj?.photo_url || '',
@@ -239,13 +238,9 @@ export default function DashboardPage() {
       classroom: ticketPayload.classroom,
       uniqueCode: uniqueTicketCode,
       date: new Date().toLocaleDateString()
-    };
-
-    setRegisterModal(null);
-    setTicketModal(ticketData);
+    });
   };
 
-  // Пропускты тізімнен басып ашу
   const openTicketFromBooking = (item) => {
     const student = item.students;
     const exam = item.exams;
@@ -287,7 +282,7 @@ export default function DashboardPage() {
         }
       `}</style>
 
-      {/* Левая панель меню */}
+      {/* Меню */}
       <aside style={{ backgroundColor: '#1e293b', borderRight: '1px solid #334155', padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
         <div>
           <div style={{ fontSize: '24px', fontWeight: '900', color: '#38bdf8', marginBottom: '32px' }}>
@@ -306,7 +301,7 @@ export default function DashboardPage() {
         </div>
       </aside>
 
-      {/* Основной контент */}
+      {/* Контент */}
       <main style={{ padding: '32px', overflowY: 'auto' }}>
         
         {/* ПРОФИЛЬ */}
@@ -407,7 +402,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* БРОНИ (Раньше результаты) */}
+        {/* БРОНИ */}
         {activeTab === 'bookings' && (
           <div>
             <h2 style={{ fontSize: '24px', fontWeight: '800', marginBottom: '24px', color: '#f8fafc' }}>Менің броньдарым</h2>
@@ -439,7 +434,6 @@ export default function DashboardPage() {
                         </div>
                       </div>
 
-                      {/* Кнопки: Результат (неактивный если нет) и Пропуск */}
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         {hasResult ? (
                           <button onClick={() => alert(`Тест нәтижесі: ${item.result_score}`)} style={btnSmallBlue}>
