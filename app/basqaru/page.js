@@ -94,6 +94,11 @@ export default function AdminPage() {
     loadAllData();
   };
 
+  const toggleActivityStatus = async (id, currentStatus) => {
+    await supabase.from('exams').update({ activity_status: !currentStatus }).eq('id', id);
+    loadAllData();
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setErrorMsg('');
@@ -152,7 +157,7 @@ export default function AdminPage() {
             reg_end_date: parseDate(cols[5]),
             reg_end_time: parseTime(cols[6]),
             price: isNaN(rawPrice) ? 0 : rawPrice,
-            is_active: true,          // Исправлено: заменено с несуществующей переменной isActive на true по умолчанию
+            is_active: true,          
             address: addressVal,          
             activity_status: activityStatus 
           });        
@@ -385,7 +390,12 @@ export default function AdminPage() {
                           />
                         </td>
                         <td style={tdStyle}>
-                          {t.activity_status ? '✅ Белсенді' : '❌ Тоқтатылған'}
+                          <input 
+                            type="checkbox" 
+                            checked={t.activity_status ?? true} 
+                            onChange={() => toggleActivityStatus(t.id, t.activity_status)}
+                            style={{ cursor: 'pointer', transform: 'scale(1.3)' }}
+                          />
                         </td>
                         <td style={tdStyle}>
                           <button onClick={() => handleDeleteExam(t.id)} style={btnSmallDanger}>Өшіру</button>
