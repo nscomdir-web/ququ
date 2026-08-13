@@ -140,7 +140,8 @@ export default function AdminPage() {
         const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, ''));
         if (cols.length >= 8) {
           const rawPrice = cols[7] ? parseFloat(cols[7].replace(/[^\d.]/g, '')) : 0;
-          const isActive = cols[8] ? cols[8].toLowerCase() === 'true' : true;
+          const addressVal = cols[9] || ''; // Индекс колонки адреса
+          const activityStatus = cols[10] ? cols[10].toLowerCase() === 'true' : true; // Тип boolean
 
           newExams.push({
             title: cols[0],
@@ -151,9 +152,10 @@ export default function AdminPage() {
             reg_end_date: parseDate(cols[5]),
             reg_end_time: parseTime(cols[6]),
             price: isNaN(rawPrice) ? 0 : rawPrice,
-            is_active: isActive
-          });
-        }
+            is_active: isActive,
+            address: addressVal,          // <-- Добавили адрес
+            activity_status: activityStatus // <-- Добавили статус активности (boolean)
+          });        }
       }
 
       if (newExams.length > 0) {
