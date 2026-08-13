@@ -14,7 +14,49 @@ function getSupabaseClient() {
 
   return createClient(rawUrl, rawKey);
 }
-
+const downloadPDF = (ticket) => {
+    // Жаңа терезе ашып, тек пропуск мазмұнын саламыз да, басып шығару (PDF ретінде сақтау) терезесін шақырамыз
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Тест пропускісі - ${ticket.uniqueCode}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; color: #000; background: #fff; text-align: center; }
+            .ticket-box { border: 2px dashed #333; padding: 20px; border-radius: 12px; max-width: 400px; margin: 0 auto; text-align: left; }
+            .header { font-size: 18px; font-weight: bold; color: #0284c7; margin-bottom: 10px; text-align: center; }
+            .info { font-size: 14px; margin: 6px 0; }
+            .qr-container { text-align: center; margin-top: 20px; }
+            .qr-code { width: 120px; height: 120px; }
+            .code-text { font-size: 16px; font-weight: bold; margin-top: 5px; letter-spacing: 1px; }
+          </style>
+        </head>
+        <body>
+          <div class="ticket-box">
+            <div class="header">QUQU - Тест пропускісі</div>
+            <div class="info"><strong>Оқушы:</strong> ${ticket.studentName}</div>
+            <div class="info"><strong>ИИН:</strong> ${ticket.iin}</div>
+            <div class="info"><strong>Мектеп/Бағыт:</strong> ${ticket.schoolType}</div>
+            <hr style="border: 0; border-top: 1px solid #ccc; margin: 12px 0;" />
+            <div class="info"><strong>Тест:</strong> ${ticket.examTitle}</div>
+            <div class="info"><strong>Форматы:</strong> ${ticket.examFormat} (${ticket.classroom})</div>
+            <div class="info"><strong>Күні мен уақыты:</strong> ${ticket.examDate} (${ticket.examTime})</div>
+            
+            <div class="qr-container">
+              <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(ticket.uniqueCode)}" alt="QR" />
+              <div class="code-text">${ticket.uniqueCode}</div>
+            </div>
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 export default function DashboardPage() {
   const [supabase] = useState(() => getSupabaseClient());
   const [loading, setLoading] = useState(true);
