@@ -193,10 +193,9 @@ export default function TeacherPage() {
         const line = lines[i].trim();
         if (!line) continue;
         
-        // CSV форматынан Код пен Аудиторияны алу (мысалы, бағандар бойынша немесе қарапайым іздеу)
         const cols = line.split(',');
         if (cols.length >= 2) {
-          const code = cols[cols.length - 2]?.replace(/"/g, '').trim(); // коды немесе ИИН арқылы
+          const code = cols[cols.length - 2]?.replace(/"/g, '').trim();
           const classroom = cols[cols.length - 1]?.replace(/"/g, '').trim();
 
           if (code && classroom) {
@@ -215,23 +214,29 @@ export default function TeacherPage() {
     reader.readAsText(file);
   };
 
-  // 3. Код/QR сканерлеу арқылы "Келді" деп белгілеу
-  const handleScanOrSearch = (e) => {
-    e.preventDefault();
-    if (!searchCode.trim()) return;
+  // 3. Код/QR сканерлеу арқылы "Келді" деп белгілеу (Тікелей функция)
+  const handleScanOrSearch = () => {
+    const query = searchCode.trim().toLowerCase();
+    console.log("Ізделіп жатқан код немесе ИИН:", query);
 
-    const found = tickets.find(t => 
-      t.five_digit_code?.toLowerCase() === searchCode.trim().toLowerCase() ||
-      t.students?.iin === searchCode.trim()
-    );
+    if (!query) {
+      alert('Іздеу жолағы бос тұр!');
+      return;
+    }
+
+    const found = tickets.find(t => {
+      const ticketCode = (t.five_digit_code || '').trim().toLowerCase();
+      const studentIin = (t.students?.iin || '').trim().toLowerCase();
+      return ticketCode === query || studentIin === query;
+    });
 
     if (!found) {
-      alert('Бұл кодпен немесе ИИН-мен тіркелген оқушы табылмады немесе басқа тестке тиесілі!');
+      alert(`Бұл кодпен немесе ИИН-мен (${searchCode}) тіркелген оқушы табылмады!`);
       setScannedResult(null);
       return;
     }
 
-    // Статусын келді деп базада жаңарту
+    console.log("Табылған оқушы:", found);
     updateAttendance(found.id, true);
   };
 
@@ -242,7 +247,7 @@ export default function TeacherPage() {
       .eq('id', ticketId);
 
     if (!error) {
-      setTickets(tickets.map(t => t.id === ticketId ? { ...t, attendance_status: status } : t));
+      setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, attendance_status: status } : t));
       const updatedTicket = tickets.find(t => t.id === ticketId);
       if (updatedTicket) {
         setScannedResult({ ...updatedTicket, attendance_status: status });
@@ -335,10 +340,10 @@ export default function TeacherPage() {
       {/* Әрекеттер: Экспорт / Импорт / Сканерлеу */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '24px' }}>
         
-        {/* Сканерлеу / Іздеу блогы */}
+        {/* Сканерлеу / Іздеу блогы (div арқылы түйме жұмыс істейтін етіп өзгертілді) */}
         <div style={cardStyle}>
           <h3 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>📷 Пропуск сканерлеу немесе код енгізу</h3>
-          <form onSubmit={handleScanOrSearch} style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '10px' }}>
             <input 
               type="text" 
               placeholder="Код (мысалы: QU-N-OF-12345) немесе ИИН" 
@@ -346,8 +351,14 @@ export default function TeacherPage() {
               onChange={(e) => setSearchCode(e.target.value)} 
               style={inputStyle} 
             />
-            <button type="submit" style={btnPrimary}>Тексеру</button>
-          </form>
+            <button 
+              type="button" 
+              onClick={handleScanOrSearch} 
+              style={btnPrimary}
+            >
+              Тексеру
+            </button>
+          </div>
 
           {/* Сканерленген немесе ізделген оқушы карточкасы */}
           {scannedResult && (
@@ -449,6 +460,6 @@ export default function TeacherPage() {
 const cardStyle = { backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '20px' };
 const inputStyle = { width: '100%', padding: '10px 12px', backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', color: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box' };
 const labelStyle = { display: 'block', fontSize: '13px', fontWeight: '600', color: '#94a3b8', marginBottom: '6px' };
-const btnPrimary = { backgroundColor: '#0284c7', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', display: 'inline-flex', alignItems: 'center' };
+const btnPrimary = { backgroundColor: '#0284c7', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' };
 const btnSecondary = { backgroundColor: '#0369a1', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', display: 'inline-flex', alignItems: 'center' };
 const btnDanger = { backgroundColor: '#ef4444', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' };
