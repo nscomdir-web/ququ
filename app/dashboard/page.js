@@ -14,6 +14,7 @@ function getSupabaseClient() {
 
   return createClient(rawUrl, rawKey);
 }
+
 const downloadPDF = (ticket) => {
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
@@ -21,43 +22,86 @@ const downloadPDF = (ticket) => {
         <head>
           <title>QUQU - Тестке кіру қағазы</title>
           <style>
-            @page { size: A4; margin: 20mm; }
-            body { font-family: 'Segoe UI', Arial, sans-serif; color: #000; background: #fff; }
-            .ticket-container { border: 2px solid #000; padding: 30px; width: 100%; max-width: 500px; margin: 0 auto; border-radius: 10px; }
-            .header { text-align: center; font-size: 22px; font-weight: bold; margin-bottom: 20px; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 10px; }
-            .row { display: flex; justify-content: space-between; margin: 10px 0; font-size: 16px; }
-            .label { font-weight: bold; }
-            .qr-section { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px dashed #666; }
-            .qr-code { width: 150px; height: 150px; }
-            .code-text { font-size: 18px; font-weight: bold; margin-top: 10px; }
-            .footer { text-align: center; font-size: 12px; margin-top: 20px; color: #555; }
+            @page { size: A4; margin: 15mm; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; color: #000; background: #fff; margin: 0; padding: 20px; }
+            .ticket-box { border: 2px solid #000; padding: 25px; max-width: 600px; margin: 0 auto; border-radius: 8px; position: relative; }
+            
+            /* Жоғарғы бөлік (Атауы және Сурет) */
+            .top-section { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 15px; }
+            .title-area { font-size: 24px; font-weight: bold; text-transform: uppercase; line-height: 1.2; }
+            .student-photo { width: 90px; height: 110px; object-fit: cover; border: 1px solid #000; background: #eee; }
+
+            /* Мәліметтер тізімі */
+            .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #ccc; font-size: 15px; }
+            .info-label { font-weight: bold; color: #333; width: 35%; }
+            .info-value { width: 65%; text-align: right; }
+
+            /* QR және код бөлігі */
+            .qr-section { text-align: center; margin-top: 25px; padding-top: 15px; border-top: 1px dashed #000; }
+            .qr-code { width: 130px; height: 130px; }
+            .code-text { font-size: 18px; font-weight: bold; margin-top: 8px; letter-spacing: 1px; }
+            
+            .footer { text-align: center; font-size: 11px; margin-top: 20px; color: #333; }
           </style>
         </head>
         <body>
-          <div class="ticket-container">
-            <div class="header">Тестке кіру қағазы</div>
+          <div class="ticket-box">
             
-            <div class="row"><span class="label">Оқушы:</span> <span>${ticket.studentName}</span></div>
-            <div class="row"><span class="label">ИИН:</span> <span>${ticket.iin}</span></div>
-            <div class="row"><span class="label">Бағыт:</span> <span>${ticket.schoolType}</span></div>
-            <div class="row"><span class="label">Тест:</span> <span>${ticket.examTitle}</span></div>
-            <div class="row"><span class="label">Форматы:</span> <span>${ticket.examFormat}</span></div>
-            <div class="row"><span class="label">Күні:</span> <span>${ticket.examDate}</span></div>
-            <div class="row"><span class="label">Уақыты:</span> <span>${ticket.examTime}</span></div>
-            <div class="row"><span class="label">Орын:</span> <span>${ticket.classroom}</span></div>
+            <!-- Жоғарғы блок -->
+            <div class="top-section">
+              <div class="title-area">
+                QUQU<br><span style="font-size: 18px; font-weight: normal;">Тестке кіру қағазы</span>
+              </div>
+              <div>
+                ${ticket.photoUrl 
+                  ? `<img class="student-photo" src="${ticket.photoUrl}" alt="Оқушы фотосы" />` 
+                  : `<div class="student-photo" style="display:flex; align-items:center; justifyContent:center; font-size:11px; color:#666;">Фото жоқ</div>`
+                }
+              </div>
+            </div>
 
+            <!-- Негізгі ақпараттар -->
+            <div class="info-row">
+              <span class="info-label">Сынақ Қатысушысы:</span>
+              <span class="info-value"><strong>${ticket.studentName}</strong></span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">ЖСН (ИИН):</span>
+              <span class="info-value">${ticket.iin}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Бағыты:</span>
+              <span class="info-value">${ticket.schoolType}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Тест атауы:</span>
+              <span class="info-value">${ticket.examTitle}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Форматы:</span>
+              <span class="info-value">${ticket.examFormat}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Күні мен уақыты:</span>
+              <span class="info-value">${ticket.examDate} / ${ticket.examTime}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Тест Мекен-жайы (Address):</span>
+              <span class="info-value">${ticket.classroom || 'Аудитория көрсетілмеген'}</span>
+            </div>
+
+            <!-- QR код пен 5 таңбалы код -->
             <div class="qr-section">
-              <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(ticket.uniqueCode)}" alt="QR" />
+              <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(ticket.uniqueCode)}" alt="QR" />
               <div class="code-text">${ticket.uniqueCode}</div>
             </div>
             
-            <div class="footer">Бұл қағаз тест орталығына кіру үшін міндетті құжат болып табылады.</div>
+            <div class="footer">Бұл құжат электронды түрде жасалған. Жарамдылығын тексеру үшін QR кодты қолданыңыз.</div>
           </div>
+
           <script>
             window.onload = function() {
               window.print();
-              // Басып шығарғаннан кейін терезені жабу үшін:
-              // window.onafterprint = window.close;
             };
           </script>
         </body>
@@ -65,6 +109,10 @@ const downloadPDF = (ticket) => {
     `);
     printWindow.document.close();
 };
+
+
+
+
 export default function DashboardPage() {
   const [supabase] = useState(() => getSupabaseClient());
   const [loading, setLoading] = useState(true);
