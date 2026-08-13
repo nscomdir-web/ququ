@@ -160,7 +160,7 @@ const downloadPDF = (ticket) => {
               </div>
               
               <div class="warning-box">
-                ⚠️ Назар аударыңыз! Тестке келгенде осы қағазды (немесе электронды нұсқасын) және жеке куәлікті/ту туралы куәлікті өзіңізбен бірге міндетті түрде әкелуіңіз қажет!
+                ⚠️ Назар аударыңыз! Тестке келгенде осы қағазды  және туу туралы куәлікті өзіңізбен бірге міндетті түрде әкелуіңіз қажет!
               </div>
             </div>
           </div>
@@ -703,7 +703,7 @@ export default function DashboardPage() {
                 <h4 style={{ margin: '0 0 3px 0', fontSize: '15px', color: '#fff' }}>{ticketModal.studentName}</h4>
                 <p style={{ margin: '2px 0', fontSize: '12px', color: '#94a3b8' }}>ЖСН (ИИН): <b>{ticketModal.iin}</b></p>
                 <p style={{ margin: '2px 0', fontSize: '12px', color: '#94a3b8' }}>Оқушы коды: <span style={{color: '#38bdf8', fontWeight: 'bold'}}>{ticketModal.studentCode}</span></p>
-                <p style={{ margin: '2px 0', fontSize: '12px', color: '#94a3b8' }}>Тілі (Бланк): <span style={{color: '#fff', fontWeight: 'bold'}}>{ticketModal.language}</span></p>
+                <p style={{ margin: '2px 0', fontSize: '12px', color: '#94a3b8' }}>Тілі: <span style={{color: '#fff', fontWeight: 'bold'}}>{ticketModal.language}</span></p>
               </div>
             </div>
 
@@ -726,7 +726,7 @@ export default function DashboardPage() {
             </div>
 
             <div style={{ backgroundColor: '#450a0a', border: '1px solid #7f1d1d', color: '#fca5a5', padding: '10px', borderRadius: '8px', fontSize: '11px', fontWeight: '600', textAlign: 'center', marginBottom: '14px' }}>
-              ⚠️ Назар аударыңыз! Тестке келгенде осы қағазды және жеке куәлікті өзіңізбен бірге міндетті түрде әкеліңіз!
+              ⚠️ Назар аударыңыз! Тестке келгенде осы қағазды және туу туралы куәлікті өзіңізбен бірге міндетті түрде әкеліңіз!
             </div>
 
             <div style={{ display: 'flex', gap: '10px' }}>
