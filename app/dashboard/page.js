@@ -173,36 +173,23 @@ const downloadPDF = (ticket) => {
     printWindow.document.close();
 };
 
-
-
 export default function DashboardPage() {
   const [supabase] = useState(() => getSupabaseClient());
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('profile');
   
-  // Данные пользователя
   const [user, setUser] = useState({ name: '', email: '', phone: '' });
-
-  // Ученики
   const [students, setStudents] = useState([]);
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [newStudent, setNewStudent] = useState({ firstName: '', lastName: '', iin: '', school: '', city: '', grade: '6', language: 'Қазақша' });
   const [studentFile, setStudentFile] = useState(null);
   const [uploading, setUploading] = useState(false);
-
-  // Тесты
   const [exams, setExams] = useState([]);
-
-  // Брони / Билеты пользователя
   const [bookings, setBookings] = useState([]);
-
-  // Модалка регистрации на тест
   const [registerModal, setRegisterModal] = useState(null);
   const [selectedStudentForReg, setSelectedStudentForReg] = useState('');
   const [selectedSchoolType, setSelectedSchoolType] = useState('НИШ');
   const [selectedFormat, setSelectedFormat] = useState('Офлайн');
-
-  // Пропуск (модалка показа билета)
   const [ticketModal, setTicketModal] = useState(null);
 
   useEffect(() => {
@@ -214,7 +201,6 @@ export default function DashboardPage() {
         return;
       }
 
-      // Профиль
       const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
@@ -227,17 +213,13 @@ export default function DashboardPage() {
         phone: profileData?.phone || session.user.user_metadata?.phone || ''
       });
 
-      // Тесты
       const { data: examsData } = await supabase.from('exams').select('*').order('exam_date', { ascending: true });
       if (examsData) setExams(examsData);
 
-      // Оқушылар
       const { data: studentsData } = await supabase.from('students').select('*').eq('parent_id', session.user.id);
       if (studentsData) setStudents(studentsData);
 
-      // Брондарды жүктеу
       await loadBookings(session.user.id);
-
       setLoading(false);
     }
 
@@ -361,6 +343,9 @@ export default function DashboardPage() {
     const randomDigits = Math.floor(10000 + Math.random() * 90000);
     const uniqueTicketCode = `QU-${schoolLetter}-${formatLetter}-${randomDigits}`;
 
+    // Мекен-жайды тек exam кестесінен аламыз
+    const examAddress = registerModal.address || 'Көрсетілмеген';
+
     const ticketPayload = {
       student_id: studentObj.id,
       exam_id: registerModal.id,
@@ -368,9 +353,9 @@ export default function DashboardPage() {
       school_type: selectedSchoolType,
       exam_format: selectedFormat,
       payment_status: 'paid',
-      classroom: selectedFormat === 'Офлайн' ? 'Аудитория 101' : 'Онлайн платформа',
+      classroom: examAddress,
       attendance_status: false,
-      qr_code_data: uniqueTicketCode // Добавлено обязательное поле для базы данных
+      qr_code_data: uniqueTicketCode
     };
 
     const { data, error } = await supabase.from('tickets').insert([ticketPayload]).select();
@@ -380,15 +365,15 @@ export default function DashboardPage() {
     }
 
     await loadBookings(session.user.id);
-
     const createdTicket = data[0];
     setRegisterModal(null);
     
-    // Сразу открываем сгенерированный пропуск
     setTicketModal({
       id: createdTicket?.id,
       studentName: `${studentObj?.first_name || ''} ${studentObj?.second_name || ''}`,
       iin: studentObj?.iin,
+      studentCode: studentObj?.student_code || '—',
+      language: studentObj?.language || 'Қазақша',
       photoUrl: studentObj?.photo_url || '',
       school: studentObj?.school || '—',
       examTitle: registerModal.title,
@@ -396,20 +381,22 @@ export default function DashboardPage() {
       examTime: registerModal.exam_time,
       schoolType: selectedSchoolType,
       examFormat: selectedFormat,
-      classroom: ticketPayload.classroom,
+      classroom: examAddress,
       uniqueCode: uniqueTicketCode,
       date: new Date().toLocaleDateString()
     });
   };
 
   const openTicketFromBooking = (item) => {
-    const student = item.students;
-    const exam = item.exams;
+    const student = item.students || {};
+    const exam = item.exams || {};
 
     setTicketModal({
       id: item.id,
       studentName: `${student?.first_name || ''} ${student?.second_name || ''}`,
       iin: student?.iin,
+      studentCode: student?.student_code || '—',
+      language: student?.language || 'Қазақша',
       photoUrl: student?.photo_url || '',
       school: student?.school || '—',
       examTitle: exam?.title || 'Тест',
@@ -417,7 +404,7 @@ export default function DashboardPage() {
       examTime: exam?.exam_time || '—',
       schoolType: item.school_type,
       examFormat: item.exam_format,
-      classroom: item.classroom,
+      classroom: exam?.address || item.classroom || 'Көрсетілмеген',
       uniqueCode: item.five_digit_code,
       date: new Date(item.created_at).toLocaleDateString()
     });
@@ -461,7 +448,6 @@ export default function DashboardPage() {
       {/* Контент */}
       <main style={{ padding: '32px', overflowY: 'auto' }}>
         
-        {/* ПРОФИЛЬ */}
         {activeTab === 'profile' && (
           <div>
             <h2 style={{ fontSize: '24px', fontWeight: '800', marginBottom: '24px', color: '#f8fafc' }}>Жеке профиль</h2>
@@ -485,7 +471,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* УЧЕНИКИ */}
         {activeTab === 'students' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '10px' }}>
@@ -532,7 +517,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* ТЕСТЫ */}
         {activeTab === 'tests' && (
           <div>
             <h2 style={{ fontSize: '24px', fontWeight: '800', marginBottom: '24px', color: '#f8fafc' }}>Қолжетімді тесттер</h2>
@@ -543,7 +527,7 @@ export default function DashboardPage() {
                   <div key={exam.id} style={{ ...cardStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', opacity: isActive ? 1 : 0.6 }}>
                     <div>
                       <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', color: '#fff' }}>{exam.title}</h3>
-                      <p style={{ margin: 0, fontSize: '14px', color: '#94a3b8' }}>Күні: {exam.exam_date || '—'} | Уақыты: {exam.exam_time || '—'} | Бағасы: {exam.price} ₸</p>
+                      <p style={{ margin: 0, fontSize: '14px', color: '#94a3b8' }}>Күні: {exam.exam_date || '—'} | Уақыты: {exam.exam_time || '—'} | Мекен-жайы: {exam.address || '—'} | Бағасы: {exam.price} ₸</p>
                     </div>
                     <div>
                       {isActive ? (
@@ -559,7 +543,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* БРОНИ */}
         {activeTab === 'bookings' && (
           <div>
             <h2 style={{ fontSize: '24px', fontWeight: '800', marginBottom: '24px', color: '#f8fafc' }}>Менің броньдарым</h2>
@@ -691,6 +674,7 @@ export default function DashboardPage() {
 
               <div style={{ backgroundColor: '#0f172a', padding: '14px', borderRadius: '8px', border: '1px solid #334155' }}>
                 <p style={{ margin: 0, fontSize: '14px', color: '#94a3b8' }}>Тест: <strong style={{color:'#fff'}}>{registerModal.title}</strong></p>
+                <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#94a3b8' }}>Мекен-жайы: <strong style={{color:'#fff'}}>{registerModal.address || 'Көрсетілмеген'}</strong></p>
                 <p style={{ margin: '6px 0 0 0', fontSize: '14px', color: '#94a3b8' }}>Төлем сомасы: <strong style={{color:'#16a34a'}}>{registerModal.price} ₸</strong></p>
               </div>
 
@@ -702,45 +686,52 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* МОДАЛКА: ПРОПУСК С QR-КОДОМ */}
+      {/* МОДАЛКА: ПРОПУСК С QR-КОДОМ (ЭКРАННЫЙ ВАРИАНТ) */}
       {ticketModal && (
         <div style={modalOverlay}>
-          <div style={{ ...modalContent, textAlign: 'center', maxWidth: '460px' }}>
-            <h3 style={{ color: '#38bdf8', fontSize: '20px', marginBottom: '4px' }}>🎟️ Тестке кіру қағазы</h3>
-            <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '16px' }}>Осы қағазбен тестке қатыса аласыз</p>
+          <div style={{ ...modalContent, textAlign: 'center', maxWidth: '440px', padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h3 style={{ color: '#38bdf8', fontSize: '18px', margin: 0 }}>🎟️ Тестке кіру қағазы</h3>
+              <button onClick={() => setTicketModal(null)} style={closeBtn}>✕</button>
+            </div>
             
-            <div style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '12px', border: '1px solid #334155', textAlign: 'left', marginBottom: '16px', display: 'flex', gap: '14px', alignItems: 'center' }}>
-              <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#334155', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ backgroundColor: '#0f172a', padding: '14px', borderRadius: '12px', border: '1px solid #334155', textAlign: 'left', marginBottom: '12px', display: 'flex', gap: '14px', alignItems: 'center' }}>
+              <div style={{ width: '55px', height: '70px', borderRadius: '8px', backgroundColor: '#334155', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {ticketModal.photoUrl ? <img src={ticketModal.photoUrl} alt="" style={{width: '100%', height: '100%', objectFit: 'cover'}} /> : '👤'}
               </div>
               <div style={{ flex: 1 }}>
-                <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', color: '#fff' }}>{ticketModal.studentName}</h4>
-                <p style={{ margin: '2px 0', fontSize: '13px', color: '#94a3b8' }}>ИИН: {ticketModal.iin}</p>
-                <p style={{ margin: '2px 0', fontSize: '12px', color: '#38bdf8', fontWeight: 'bold' }}>Бағыт: {ticketModal.schoolType}</p>
+                <h4 style={{ margin: '0 0 3px 0', fontSize: '15px', color: '#fff' }}>{ticketModal.studentName}</h4>
+                <p style={{ margin: '2px 0', fontSize: '12px', color: '#94a3b8' }}>ЖСН (ИИН): <b>{ticketModal.iin}</b></p>
+                <p style={{ margin: '2px 0', fontSize: '12px', color: '#94a3b8' }}>Оқушы коды: <span style={{color: '#38bdf8', fontWeight: 'bold'}}>{ticketModal.studentCode}</span></p>
+                <p style={{ margin: '2px 0', fontSize: '12px', color: '#94a3b8' }}>Тілі (Бланк): <span style={{color: '#fff', fontWeight: 'bold'}}>{ticketModal.language}</span></p>
               </div>
             </div>
 
-            <div style={{ backgroundColor: '#0f172a', padding: '14px', borderRadius: '12px', border: '1px solid #334155', textAlign: 'left', marginBottom: '16px' }}>
-              <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>Тест:</strong> {ticketModal.examTitle}</p>
-              <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>Форматы:</strong> <span style={{color: '#38bdf8', fontWeight: 'bold'}}>{ticketModal.examFormat}</span> ({ticketModal.classroom})</p>
-              <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>Күні:</strong> {ticketModal.examDate} ({ticketModal.examTime})</p>
+            <div style={{ backgroundColor: '#0f172a', padding: '14px', borderRadius: '12px', border: '1px solid #334155', textAlign: 'left', marginBottom: '14px', fontSize: '13px' }}>
+              <p style={{ margin: '4px 0', color: '#cbd5e1' }}><strong>Тест атауы:</strong> <span style={{color:'#fff'}}>{ticketModal.examTitle}</span></p>
+              <p style={{ margin: '4px 0', color: '#cbd5e1' }}><strong>Форматы:</strong> <span style={{color: '#38bdf8', fontWeight: 'bold'}}>{ticketModal.examFormat}</span></p>
+              <p style={{ margin: '4px 0', color: '#cbd5e1' }}><strong>Өтетін күні мен уақыты:</strong> <span style={{color:'#fff'}}>{ticketModal.examDate} ({ticketModal.examTime})</span></p>
+              <p style={{ margin: '4px 0', color: '#cbd5e1' }}><strong>Тест Мекен-жайы (Address):</strong> <span style={{color:'#fff'}}>{ticketModal.classroom}</span></p>
               
-              {/* QR Код генерация */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '12px', backgroundColor: '#1e293b', padding: '10px', borderRadius: '8px' }}>
                 <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(ticketModal.uniqueCode)}`} 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(ticketModal.uniqueCode)}`} 
                   alt="QR Code" 
-                  style={{ width: '110px', height: '110px', borderRadius: '6px', background: '#fff', padding: '4px' }}
+                  style={{ width: '95px', height: '95px', borderRadius: '6px', background: '#fff', padding: '4px' }}
                 />
-                <span style={{ color: '#38bdf8', fontWeight: '800', fontSize: '15px', letterSpacing: '1px', marginTop: '8px' }}>
+                <span style={{ color: '#38bdf8', fontWeight: '800', fontSize: '14px', letterSpacing: '1px', marginTop: '6px' }}>
                   {ticketModal.uniqueCode}
                 </span>
               </div>
             </div>
 
+            <div style={{ backgroundColor: '#450a0a', border: '1px solid #7f1d1d', color: '#fca5a5', padding: '10px', borderRadius: '8px', fontSize: '11px', fontWeight: '600', textAlign: 'center', marginBottom: '14px' }}>
+              ⚠️ Назар аударыңыз! Тестке келгенде осы қағазды және жеке куәлікті өзіңізбен бірге міндетті түрде әкеліңіз!
+            </div>
+
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => downloadPDF(ticketModal)} style={{ ...btnPrimary, flex: 1, justifyContent: 'center' }}>📥 PDF жүктеу</button>
-              <button onClick={() => setTicketModal(null)} style={{ ...btnSmallDanger, flex: 1, padding: '12px' }}>Жабу</button>
+              <button onClick={() => downloadPDF(ticketModal)} style={{ ...btnPrimary, flex: 1, justifyContent: 'center' }}>📥 PDF жүктеу / Баспа</button>
+              <button onClick={() => setTicketModal(null)} style={{ ...btnSmallDanger, flex: 1, padding: '10px' }}>Жабу</button>
             </div>
           </div>
         </div>
