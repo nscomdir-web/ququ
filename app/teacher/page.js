@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import Script from 'next/script';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,19 +24,16 @@ export default function TeacherPage() {
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Деректер
   const [activeExams, setActiveExams] = useState([]);
   const [selectedExamId, setSelectedExamId] = useState('');
   const [tickets, setTickets] = useState([]);
   
-  // Сканерлеу және іздеу
   const [searchCode, setSearchCode] = useState('');
   const [scannedResult, setScannedResult] = useState(null);
-  const [isCameraActive, setIsCameraActive] = useState(false);
-  const videoRef = useRef(null);
-  const streamRef = useRef(null);
+  const [isScanning, setIsScanning] = useState(false);
+  
+  const scannerRef = useRef(null);
 
-  // Авторизацияны тексеру
   useEffect(() => {
     async function checkExistingSession() {
       const { data: { session } } = await supabase.auth.getSession();
@@ -58,14 +56,12 @@ export default function TeacherPage() {
     }
 
     checkExistingSession();
-    
-    // Компонент өшкенде камераны жабу
+
     return () => {
-      stopCamera();
+      stopQrScanner();
     };
   }, [supabase]);
 
-  // Кіру функциясы
   const handleLogin = async (e) => {
     e.preventDefault();
     setErrorMsg('');
@@ -101,7 +97,7 @@ export default function TeacherPage() {
   };
 
   const handleLogout = async () => {
-    stopCamera();
+    stopQrScanner();
     await supabase.auth.signOut();
     setIsTeacher(false);
     setEmail('');
@@ -110,7 +106,6 @@ export default function TeacherPage() {
     setSelectedExamId('');
   };
 
-  // Тек белсенді тесттерді жүктеу
   async function loadActiveExams() {
     const { data, error } = await supabase
       .from('exams')
@@ -151,35 +146,55 @@ export default function TeacherPage() {
     await loadTicketsForExam(examId);
   };
 
-  // Камераны іске қосу (Смартфон камерасы)
-  const startCamera = async () => {
-    setIsCameraActive(true);
+  const startQrScanner = async () => {
+    if (isScanning) return;
+    
+    if (typeof window === 'undefined' || !window.Html5Qrcode) {
+      alert('Сканер кітапханасы әлі жүктеліп жатыр. Бір секунд күтіп, қайта басыңыз.');
+      return;
+    }
+
+    setIsScanning(true);
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' } // Артқы камераны таңдау
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
+      const scanner = new window.Html5Qrcode("qr-reader");
+      scannerRef.current = scanner;
+
+      await scanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 }
+        },
+        (decodedText) => {
+          console.log("QR код оқылды:", decodedText);
+          handleScanOrSearch(decodedText);
+          stopQrScanner();
+        },
+        (errorMessage) => {
+          // Сканерлеу кезіндегі қателерді елемеу
+        }
+      );
     } catch (err) {
-      console.error("Камераны ашу мүмкін емес:", err);
-      alert("Камераға рұқсат жоқ немесе құрылғыда камера табылмады!");
-      setIsCameraActive(false);
+      console.error("Камераны іске қосу қатесі:", err);
+      alert("Камераны ашу мүмкін емес немесе рұқсат берілмеді!");
+      setIsScanning(false);
     }
   };
 
-  // Камераны тоқтату
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
+  const stopQrScanner = async () => {
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.stop();
+        scannerRef.current.clear();
+      } catch (e) {
+        console.error("Сканерді тоқтату қатесі:", e);
+      }
+      scannerRef.current = null;
     }
-    setIsCameraActive(false);
+    setIsScanning(false);
   };
 
-  // Кодты немесе ИИН-ді өңдеу
   const handleScanOrSearch = (codeToSearch) => {
     const query = (codeToSearch || searchCode).trim().toLowerCase();
     if (!query) {
@@ -190,7 +205,7 @@ export default function TeacherPage() {
     const found = tickets.find(t => {
       const ticketCode = (t.five_digit_code || '').trim().toLowerCase();
       const studentIin = (t.students?.iin || '').trim().toLowerCase();
-      return ticketCode === query || studentIin === query;
+      return ticketCode === query || studentIin === query || query.includes(ticketCode);
     });
 
     if (!found) {
@@ -200,7 +215,8 @@ export default function TeacherPage() {
     }
 
     updateAttendance(found.id, true);
-    stopCamera(); // Табылған соң камераны жабу
+    stopQrScanner();
+    setSearchCode('');
   };
 
   const updateAttendance = async (ticketId, status) => {
@@ -220,7 +236,6 @@ export default function TeacherPage() {
     }
   };
 
-  // Excel экспорт
   const exportToExcel = () => {
     if (tickets.length === 0) return alert('Экспорттау үшін деректер жоқ!');
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
@@ -253,7 +268,6 @@ export default function TeacherPage() {
     document.body.removeChild(link);
   };
 
-  // Аудитория импорты
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -332,13 +346,14 @@ export default function TeacherPage() {
   return (
     <div style={{ padding: '30px', backgroundColor: '#0f172a', minHeight: '100vh', color: '#fff', fontFamily: 'system-ui, sans-serif' }}>
       
-      {/* Шапка */}
+      {/* Автомати түрде кітапхананы қосатын скрипт */}
+      <Script src="https://unpkg.com/html5-qrcode" strategy="afterInteractive" />
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '15px' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: '800', margin: 0 }}>👨‍🏫 Мұғалімнің басқару панелі (Белсенді тесттер)</h1>
+        <h1 style={{ fontSize: '24px', fontWeight: '800', margin: 0 }}>👨‍🏫 Мұғалімнің басқару панелі</h1>
         <button onClick={handleLogout} style={btnDanger}>Шығу</button>
       </div>
 
-      {/* Тестті таңдау панелі */}
       <div style={{ ...cardStyle, marginBottom: '24px' }}>
         <label style={labelStyle}>Белсенді тестті таңдаңыз:</label>
         <select value={selectedExamId} onChange={handleExamChange} style={{ ...inputStyle, maxWidth: '400px' }}>
@@ -352,10 +367,9 @@ export default function TeacherPage() {
         </select>
       </div>
 
-      {/* Статистика блоктары */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
         <div style={{ ...cardStyle, textAlign: 'center' }}>
-          <div style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '600' }}>Барлығы тіркелгендер</div>
+          <div style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '600' }}>Тіркелгендер</div>
           <div style={{ fontSize: '28px', fontWeight: '900', color: '#38bdf8', marginTop: '6px' }}>{totalRegistered}</div>
         </div>
         <div style={{ ...cardStyle, textAlign: 'center' }}>
@@ -363,37 +377,36 @@ export default function TeacherPage() {
           <div style={{ fontSize: '28px', fontWeight: '900', color: '#22c55e', marginTop: '6px' }}>{totalPresent}</div>
         </div>
         <div style={{ ...cardStyle, textAlign: 'center' }}>
-          <div style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '600' }}>Әлі келмегендер</div>
+          <div style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '600' }}>Келмегендер</div>
           <div style={{ fontSize: '28px', fontWeight: '900', color: '#f43f5e', marginTop: '6px' }}>{totalAbsent}</div>
         </div>
       </div>
 
-      {/* КАМЕРА ЖӘНЕ ІЗДЕУ БЛОГЫ */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '24px' }}>
         
+        {/* QR КАМЕРА СКАНЕРІ */}
         <div style={cardStyle}>
-          <h3 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>📷 Оқушыны қатыстыру (Сканерлеу / Код)</h3>
+          <h3 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>📷 QR Камерамен сканерлеу</h3>
           
-          {/* Камераны ашу батырмасы */}
-          {!isCameraActive ? (
-            <button onClick={startCamera} style={{ ...btnPrimary, width: '100%', justifyContent: 'center', marginBottom: '14px', backgroundColor: '#10b981' }}>
-              🎥 Камераны ашу (Сканерлеу)
+          <div id="qr-reader" style={{ width: '100%', marginBottom: '12px', borderRadius: '8px', overflow: 'hidden' }}></div>
+
+          {!isScanning ? (
+            <button onClick={startQrScanner} style={{ ...btnPrimary, width: '100%', justifyContent: 'center', marginBottom: '14px', backgroundColor: '#10b981' }}>
+              ▶️ Камераны қосу (Сканерлеу)
             </button>
           ) : (
-            <div style={{ marginBottom: '14px', textAlign: 'center' }}>
-              <video ref={videoRef} style={{ width: '100%', maxHeight: '200px', borderRadius: '8px', objectFit: 'cover', background: '#000' }} muted playsInline></video>
-              <button onClick={stopCamera} style={{ ...btnDanger, marginTop: '8px', width: '100%' }}>
-                ⏹️ Камераны жабу
-              </button>
-            </div>
+            <button onClick={stopQrScanner} style={{ ...btnDanger, width: '100%', marginBottom: '14px' }}>
+              ⏹️ Камераны тоқтату
+            </button>
           )}
 
           <div style={{ display: 'flex', gap: '10px' }}>
             <input 
               type="text" 
-              placeholder="Код немесе ИИН енгізу" 
+              placeholder="Немесе код/ИИН теріп іздеу" 
               value={searchCode} 
               onChange={(e) => setSearchCode(e.target.value)} 
+              onKeyDown={(e) => { if (e.key === 'Enter') handleScanOrSearch(); }}
               style={inputStyle} 
             />
             <button 
@@ -401,11 +414,10 @@ export default function TeacherPage() {
               onClick={() => handleScanOrSearch()} 
               style={btnPrimary}
             >
-              Тексеру
+              Іздеу
             </button>
           </div>
 
-          {/* Нәтиже карточкасы */}
           {scannedResult && (
             <div style={{ marginTop: '16px', backgroundColor: '#0f172a', padding: '14px', borderRadius: '10px', border: '2px solid #22c55e', display: 'flex', gap: '14px', alignItems: 'center' }}>
               <div style={{ width: '55px', height: '70px', borderRadius: '8px', backgroundColor: '#334155', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -420,7 +432,6 @@ export default function TeacherPage() {
           )}
         </div>
 
-        {/* Excel құралдары */}
         <div style={cardStyle}>
           <h3 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>📊 Excel құралдары</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -436,7 +447,6 @@ export default function TeacherPage() {
 
       </div>
 
-      {/* Тізім кестесі */}
       <div style={cardStyle}>
         <h3 style={{ margin: '0 0 16px 0', fontSize: '18px' }}>📋 Осы тестке тіркелгендер тізімі</h3>
         <div style={{ overflowX: 'auto' }}>
