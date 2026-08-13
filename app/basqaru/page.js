@@ -62,17 +62,14 @@ export default function AdminPage() {
   }, [supabase]);
 
   const loadAllData = async () => {
-    // Загружаем пользователей из таблицы profiles (где id совпадает с auth.users id)
     const { data: usersData } = await supabase.from('profiles').select('*');
     if (usersData) setUsers(usersData);
 
-    // Загружаем всех учеников
     const { data: studentsData } = await supabase.from('students').select('*');
     
     if (studentsData && usersData) {
       const studentsWithParents = studentsData.map(student => {
         const parentId = student.parent_id || student.user_id;
-        // Ищем в profiles пользователя, чей id совпадает с parent_id ученика
         const parent = usersData.find(u => u.id === parentId);
         return {
           ...student,
@@ -84,7 +81,6 @@ export default function AdminPage() {
       setStudents(studentsData);
     }
 
-    // Загружаем тесты
     const { data: testsData } = await supabase.from('exams').select('*').order('exam_date', { ascending: true });
     if (testsData) setTests(testsData);
   };
@@ -238,12 +234,11 @@ export default function AdminPage() {
                     <th style={thStyle}>Актив</th>
                     <th style={thStyle}>Админ</th>
                     <th style={thStyle}>Мұғалім</th>
-                    <th style={thStyle}>Тіркелген күні</th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.length === 0 ? (
-                    <tr><td colSpan="8" style={tdStyle}>Деректер жоқ</td></tr>
+                    <tr><td colSpan="7" style={tdStyle}>Деректер жоқ</td></tr>
                   ) : (
                     users.map((u) => (
                       <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
@@ -254,7 +249,6 @@ export default function AdminPage() {
                         <td style={tdStyle}>{u.is_active ? '✅' : '❌'}</td>
                         <td style={tdStyle}>{u.is_admin ? '⭐ Иә' : 'Жоқ'}</td>
                         <td style={tdStyle}>{u.is_teacher ? '📚 Иә' : 'Жоқ'}</td>
-                        <td style={tdStyle}>{u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}</td>
                       </tr>
                     ))
                   )}
