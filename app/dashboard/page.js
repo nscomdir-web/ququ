@@ -14,49 +14,56 @@ function getSupabaseClient() {
 
   return createClient(rawUrl, rawKey);
 }
+
+// PDF жүктеу функциясы (Жаңа терезе ашып басып шығару терезесін шақырады)
 const downloadPDF = (ticket) => {
-    // Жаңа терезе ашып, тек пропуск мазмұнын саламыз да, басып шығару (PDF ретінде сақтау) терезесін шақырамыз
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Тест пропускісі - ${ticket.uniqueCode}</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 20px; color: #000; background: #fff; text-align: center; }
-            .ticket-box { border: 2px dashed #333; padding: 20px; border-radius: 12px; max-width: 400px; margin: 0 auto; text-align: left; }
-            .header { font-size: 18px; font-weight: bold; color: #0284c7; margin-bottom: 10px; text-align: center; }
-            .info { font-size: 14px; margin: 6px 0; }
-            .qr-container { text-align: center; margin-top: 20px; }
-            .qr-code { width: 120px; height: 120px; }
-            .code-text { font-size: 16px; font-weight: bold; margin-top: 5px; letter-spacing: 1px; }
-          </style>
-        </head>
-        <body>
-          <div class="ticket-box">
-            <div class="header">QUQU - Тест пропускісі</div>
-            <div class="info"><strong>Оқушы:</strong> ${ticket.studentName}</div>
-            <div class="info"><strong>ИИН:</strong> ${ticket.iin}</div>
-            <div class="info"><strong>Мектеп/Бағыт:</strong> ${ticket.schoolType}</div>
-            <hr style="border: 0; border-top: 1px solid #ccc; margin: 12px 0;" />
-            <div class="info"><strong>Тест:</strong> ${ticket.examTitle}</div>
-            <div class="info"><strong>Форматы:</strong> ${ticket.examFormat} (${ticket.classroom})</div>
-            <div class="info"><strong>Күні мен уақыты:</strong> ${ticket.examDate} (${ticket.examTime})</div>
-            
-            <div class="qr-container">
-              <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(ticket.uniqueCode)}" alt="QR" />
-              <div class="code-text">${ticket.uniqueCode}</div>
-            </div>
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert('Браузер жаңа терезені ашуға рұқсат бермеді. Қалқымалы терезелерді (pop-up) қосыңыз.');
+    return;
+  }
+  
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>Тест пропускісі - ${ticket.uniqueCode}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; color: #000; background: #fff; text-align: center; }
+          .ticket-box { border: 2px dashed #333; padding: 20px; border-radius: 12px; max-width: 400px; margin: 0 auto; text-align: left; }
+          .header { font-size: 18px; font-weight: bold; color: #0284c7; margin-bottom: 10px; text-align: center; }
+          .info { font-size: 14px; margin: 6px 0; }
+          .qr-container { text-align: center; margin-top: 20px; }
+          .qr-code { width: 120px; height: 120px; }
+          .code-text { font-size: 16px; font-weight: bold; margin-top: 5px; letter-spacing: 1px; }
+        </style>
+      </head>
+      <body>
+        <div class="ticket-box">
+          <div class="header">QUQU - Тест пропускісі</div>
+          <div class="info"><strong>Оқушы:</strong> ${ticket.studentName}</div>
+          <div class="info"><strong>ИИН:</strong> ${ticket.iin}</div>
+          <div class="info"><strong>Мектеп/Бағыт:</strong> ${ticket.schoolType}</div>
+          <hr style="border: 0; border-top: 1px solid #ccc; margin: 12px 0;" />
+          <div class="info"><strong>Тест:</strong> ${ticket.examTitle}</div>
+          <div class="info"><strong>Форматы:</strong> ${ticket.examFormat} (${ticket.classroom})</div>
+          <div class="info"><strong>Күні мен уақыты:</strong> ${ticket.examDate} (${ticket.examTime})</div>
+          
+          <div class="qr-container">
+            <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(ticket.uniqueCode)}" alt="QR" />
+            <div class="code-text">${ticket.uniqueCode}</div>
           </div>
-          <script>
-            window.onload = function() {
-              window.print();
-            };
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-  };
+        </div>
+        <script>
+          window.onload = function() {
+            window.print();
+          };
+        </script>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+};
+
 export default function DashboardPage() {
   const [supabase] = useState(() => getSupabaseClient());
   const [loading, setLoading] = useState(true);
@@ -252,7 +259,7 @@ export default function DashboardPage() {
       payment_status: 'paid',
       classroom: selectedFormat === 'Офлайн' ? 'Аудитория 101' : 'Онлайн платформа',
       attendance_status: false,
-      qr_code_data: uniqueTicketCode // Добавлено обязательное поле для базы данных
+      qr_code_data: uniqueTicketCode
     };
 
     const { data, error } = await supabase.from('tickets').insert([ticketPayload]).select();
@@ -266,7 +273,6 @@ export default function DashboardPage() {
     const createdTicket = data[0];
     setRegisterModal(null);
     
-    // Сразу открываем сгенерированный пропуск
     setTicketModal({
       id: createdTicket?.id,
       studentName: `${studentObj?.first_name || ''} ${studentObj?.second_name || ''}`,
@@ -303,10 +309,6 @@ export default function DashboardPage() {
       uniqueCode: item.five_digit_code,
       date: new Date(item.created_at).toLocaleDateString()
     });
-  };
-
-  const downloadPDF = (ticket) => {
-    alert(`"${ticket.examTitle}" пропускі жүктелуде (PDF)... Код: ${ticket.uniqueCode}`);
   };
 
   if (loading) {
@@ -635,15 +637,15 @@ export default function DashboardPage() {
   );
 }
 
-// Стили
-const menuBtn = (active) => ({ width: '100%', textAlign: 'left', padding: '12px 16px', borderRadius: '8px', border: 'none', backgroundColor: active ? '#0369a1' : 'transparent', color: active ? '#e0f2fe' : '#94a3b8', fontWeight: active ? '700' : '500', cursor: 'pointer', fontSize: '15px' });
-const cardStyle = { backgroundColor: '#1e293b', borderRadius: '16px', padding: '24px', border: '1px solid #334155', boxShadow: '0 10px 25px rgba(0,0,0,0.3)' };
-const btnPrimary = { backgroundColor: '#38bdf8', color: '#0f172a', border: 'none', padding: '10px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' };
-const btnSmallBlue = { backgroundColor: '#0284c7', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' };
-const btnSmallDanger = { backgroundColor: '#ef4444', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' };
-const btnLightDanger = { backgroundColor: '#fee2e2', color: '#dc2626', border: 'none', padding: '10px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' };
-const modalOverlay = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' };
-const modalContent = { backgroundColor: '#1e293b', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '420px', border: '1px solid #334155', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)' };
+// Қосымша стильдер объектілері
+const cardStyle = { backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '20px' };
 const labelStyle = { display: 'block', fontSize: '13px', fontWeight: '600', color: '#94a3b8', marginBottom: '6px' };
 const inputStyle = { width: '100%', padding: '12px', backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', color: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box' };
-const closeBtn = { background: 'none', border: 'none', color: '#94a3b8', fontSize: '18px', cursor: 'pointer', fontWeight: 'bold' };
+const btnPrimary = { backgroundColor: '#0284c7', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' };
+const btnSmallBlue = { backgroundColor: '#0369a1', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' };
+const btnSmallDanger = { backgroundColor: '#7f1d1d', color: '#fca5a5', border: 'none', padding: '8px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' };
+const btnLightDanger = { backgroundColor: '#334155', color: '#fca5a5', border: 'none', padding: '10px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', width: '100%' };
+const modalOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' };
+const modalContent = { backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '400px', boxSizing: 'box-sizing', maxHeight: '90vh', overflowY: 'auto' };
+const closeBtn = { background: 'none', border: 'none', color: '#94a3b8', fontSize: '18px', cursor: 'pointer' };
+const menuBtn = (active) => ({ width: '100%', textAlign: 'left', padding: '12px 16px', borderRadius: '8px', backgroundColor: active ? '#0369a1' : 'transparent', color: active ? '#fff' : '#94a3b8', border: 'none', fontWeight: '700', cursor: 'pointer', fontSize: '15px' });
