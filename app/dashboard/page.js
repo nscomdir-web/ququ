@@ -22,7 +22,7 @@ function getSupabaseClient() {
   return createClient(rawUrl, rawKey);
 }
 
-// --- DOWNLOAD PDF / PRINT FUNCTION (Официальный дизайн формата А4) ---
+// --- DOWNLOAD PDF / PRINT FUNCTION (Крупное фото и QR по центру) ---
 const downloadPDF = (ticket) => {
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
@@ -55,7 +55,6 @@ const downloadPDF = (ticket) => {
               position: relative;
               page-break-after: always;
             }
-            /* Дизайн пропуска */
             .ticket-card { 
               border: 2px solid #0284c7; 
               border-radius: 20px; 
@@ -76,7 +75,7 @@ const downloadPDF = (ticket) => {
             .brand-title { 
               font-size: 28px; 
               font-weight: 900; 
-              color: #0284c7; 
+5              color: #0284c7; 
               letter-spacing: -0.5px; 
             }
             .brand-subtitle { 
@@ -95,23 +94,27 @@ const downloadPDF = (ticket) => {
               font-weight: 800; 
               color: #0369a1; 
             }
+            /* Секция ученика с крупным фото посередине */
             .student-section { 
               display: flex; 
-              gap: 20px; 
+              flex-direction: column;
               align-items: center; 
+              text-align: center;
               background: #f8fafc; 
-              padding: 20px; 
+              padding: 24px; 
               border-radius: 14px; 
               border: 1px solid #e2e8f0; 
               margin-bottom: 20px; 
             }
             .student-photo { 
-              width: 80px; 
-              height: 100px; 
+              width: 120px; 
+              height: 150px; 
               object-fit: cover; 
-              border-radius: 8px; 
-              border: 1px solid #cbd5e1; 
+              border-radius: 10px; 
+              border: 2px solid #cbd5e1; 
               background: #e2e8f0; 
+              margin-bottom: 14px; 
+              box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
             }
             .info-grid { 
               display: grid; 
@@ -139,21 +142,21 @@ const downloadPDF = (ticket) => {
               font-weight: 700; 
               color: #0f172a; 
             }
+            /* Крупный QR-код посередине */
             .footer-row { 
               display: flex; 
-              justify-content: space-between; 
+              flex-direction: column;
               align-items: center; 
+              text-align: center;
               background: #ffffff; 
-              padding: 15px 20px; 
+              padding: 20px; 
               border-radius: 14px; 
               border: 1px solid #e2e8f0; 
             }
-            .qr-container { 
-              text-align: center; 
-            }
             .qr-code { 
-              width: 90px; 
-              height: 90px; 
+              width: 140px; 
+              height: 140px; 
+              margin-bottom: 8px;
             }
             .warning-box { 
               background: #fff1f2; 
@@ -188,13 +191,13 @@ const downloadPDF = (ticket) => {
                 <div class="badge-code">Бронь коды: ${ticket.uniqueCode}</div>
               </div>
 
-              <!-- Оқушы мәліметі -->
+              <!-- Крупное фото и данные ученика посередине -->
               <div class="student-section">
                 <div>
-                  ${ticket.photoUrl ? `<img class="student-photo" src="${ticket.photoUrl}" alt="Фото" />` : `<div class="student-photo" style="display:flex; align-items:center; justify-content:center; font-size:10px; color:#666; text-align:center;">Фото жоқ</div>`}
+                  ${ticket.photoUrl ? `<img class="student-photo" src="${ticket.photoUrl}" alt="Фото" />` : `<div class="student-photo" style="display:flex; align-items:center; justify-content:center; font-size:11px; color:#666;">Фото жоқ</div>`}
                 </div>
-                <div style="flex: 1;">
-                  <div style="font-size: 20px; font-weight: 900; color: #0f172a; margin-bottom: 6px;">${ticket.studentName}</div>
+                <div>
+                  <div style="font-size: 22px; font-weight: 900; color: #0f172a; margin-bottom: 6px;">${ticket.studentName}</div>
                   <div style="font-size: 13px; color: #475569; margin-bottom: 3px;">ЖСН (ИИН): <b>${ticket.iin}</b></div>
                   <div style="font-size: 13px; color: #475569; margin-bottom: 3px;">Оқушы коды: <b style="color: #0284c7;">${ticket.studentCode || '—'}</b></div>
                   <div style="font-size: 13px; color: #475569;">Тест тапсыру тілі: <b>${ticket.language || 'Қазақша'}</b></div>
@@ -221,15 +224,11 @@ const downloadPDF = (ticket) => {
                 </div>
               </div>
 
-              <!-- QR және код -->
+              <!-- Увеличенный QR-код по центру -->
               <div class="footer-row">
-                <div>
-                  <div style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px;">Бақылаушы үшін QR-код:</div>
-                  <div style="font-size: 11px; color: #64748b;">Қағаздың түпнұсқалығы осы код арқылы тексеріледі.</div>
-                </div>
-                <div class="qr-container">
-                  <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(ticket.uniqueCode)}" alt="QR" />
-                </div>
+                <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(ticket.uniqueCode)}" alt="QR" />
+                <div style="font-size: 16px; font-weight: 800; color: #0284c7; letter-spacing: 1px;">${ticket.uniqueCode}</div>
+                <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Бақылаушы үшін тексеру коды</div>
               </div>
 
               <!-- Ескерту -->
@@ -238,9 +237,8 @@ const downloadPDF = (ticket) => {
               </div>
             </div>
 
-            <!-- Инструкция внизу листа A4 -->
             <div class="instructions">
-              <b>Қосымша ақпарат:</b> Бұл құжат QUQU білім беру платформасы арқылы автоматты түрде генерацияланды. Тіркеу күні: ${ticket.date || '—'}. Сұрақтар бойынша қолдау қызметіне хабарласыңыз.
+              <b>Қосымша ақпарат:</b> Бұл құжат QUQU білім беру платформасы арқылы автоматты түрде генерацияланды. Тіркеу күні: ${ticket.date || '—'}.
             </div>
           </div>
 
@@ -253,6 +251,7 @@ const downloadPDF = (ticket) => {
       </html>
     `);
     printWindow.document.close();
+};
 };
 export default function DashboardPage() {
   const [supabase] = useState(() => getSupabaseClient());
