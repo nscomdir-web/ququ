@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
@@ -31,6 +31,9 @@ export default function TeacherPage() {
   // Сканерлеу және іздеу
   const [searchCode, setSearchCode] = useState('');
   const [scannedResult, setScannedResult] = useState(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
 
   // Авторизацияны тексеру
   useEffect(() => {
@@ -55,6 +58,11 @@ export default function TeacherPage() {
     }
 
     checkExistingSession();
+    
+    // Компонент өшкенде камераны жабу
+    return () => {
+      stopCamera();
+    };
   }, [supabase]);
 
   // Кіру функциясы
@@ -93,6 +101,7 @@ export default function TeacherPage() {
   };
 
   const handleLogout = async () => {
+    stopCamera();
     await supabase.auth.signOut();
     setIsTeacher(false);
     setEmail('');
@@ -101,7 +110,7 @@ export default function TeacherPage() {
     setSelectedExamId('');
   };
 
-  // Тек белсенді тесттерді жүктеу (is_active === true)
+  // Тек белсенді тесттерді жүктеу
   async function loadActiveExams() {
     const { data, error } = await supabase
       .from('exams')
@@ -118,7 +127,6 @@ export default function TeacherPage() {
     }
   }
 
-  // Таңдалған тестке қатысты билеттерді/оқушыларды жүктеу
   async function loadTicketsForExam(examId) {
     if (!examId) return;
     const { data, error } = await supabase
@@ -136,7 +144,6 @@ export default function TeacherPage() {
     }
   }
 
-  // Тест ауысқанда
   const handleExamChange = async (e) => {
     const examId = e.target.value;
     setSelectedExamId(examId);
@@ -144,10 +151,78 @@ export default function TeacherPage() {
     await loadTicketsForExam(examId);
   };
 
-  // 1. Excel-ге экспорттау (CSV форматында жүктеу)
+  // Камераны іске қосу (Смартфон камерасы)
+  const startCamera = async () => {
+    setIsCameraActive(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' } // Артқы камераны таңдау
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+    } catch (err) {
+      console.error("Камераны ашу мүмкін емес:", err);
+      alert("Камераға рұқсат жоқ немесе құрылғыда камера табылмады!");
+      setIsCameraActive(false);
+    }
+  };
+
+  // Камераны тоқтату
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setIsCameraActive(false);
+  };
+
+  // Кодты немесе ИИН-ді өңдеу
+  const handleScanOrSearch = (codeToSearch) => {
+    const query = (codeToSearch || searchCode).trim().toLowerCase();
+    if (!query) {
+      alert('Іздеу жолағы бос тұр!');
+      return;
+    }
+
+    const found = tickets.find(t => {
+      const ticketCode = (t.five_digit_code || '').trim().toLowerCase();
+      const studentIin = (t.students?.iin || '').trim().toLowerCase();
+      return ticketCode === query || studentIin === query;
+    });
+
+    if (!found) {
+      alert(`Бұл кодпен немесе ИИН-мен (${query}) тіркелген оқушы табылмады!`);
+      setScannedResult(null);
+      return;
+    }
+
+    updateAttendance(found.id, true);
+    stopCamera(); // Табылған соң камераны жабу
+  };
+
+  const updateAttendance = async (ticketId, status) => {
+    const { error } = await supabase
+      .from('tickets')
+      .update({ attendance_status: status })
+      .eq('id', ticketId);
+
+    if (!error) {
+      setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, attendance_status: status } : t));
+      const updatedTicket = tickets.find(t => t.id === ticketId);
+      if (updatedTicket) {
+        setScannedResult({ ...updatedTicket, attendance_status: status });
+      }
+    } else {
+      alert('Қате орын алды: ' + error.message);
+    }
+  };
+
+  // Excel экспорт
   const exportToExcel = () => {
     if (tickets.length === 0) return alert('Экспорттау үшін деректер жоқ!');
-
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
     csvContent += "№,Аты-жөні,ИИН,Мектеп,Сынып,Тілі,Бағыты,Форматы,Аудитория,Код,Келді ме?\n";
 
@@ -178,7 +253,7 @@ export default function TeacherPage() {
     document.body.removeChild(link);
   };
 
-  // 2. Аудиторияларды Excel/CSV арқылы импорттау (Жаппай жаңарту)
+  // Аудитория импорты
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -214,50 +289,6 @@ export default function TeacherPage() {
     reader.readAsText(file);
   };
 
-  // 3. Код/QR сканерлеу арқылы "Келді" деп белгілеу (Тікелей функция)
-  const handleScanOrSearch = () => {
-    const query = searchCode.trim().toLowerCase();
-    console.log("Ізделіп жатқан код немесе ИИН:", query);
-
-    if (!query) {
-      alert('Іздеу жолағы бос тұр!');
-      return;
-    }
-
-    const found = tickets.find(t => {
-      const ticketCode = (t.five_digit_code || '').trim().toLowerCase();
-      const studentIin = (t.students?.iin || '').trim().toLowerCase();
-      return ticketCode === query || studentIin === query;
-    });
-
-    if (!found) {
-      alert(`Бұл кодпен немесе ИИН-мен (${searchCode}) тіркелген оқушы табылмады!`);
-      setScannedResult(null);
-      return;
-    }
-
-    console.log("Табылған оқушы:", found);
-    updateAttendance(found.id, true);
-  };
-
-  const updateAttendance = async (ticketId, status) => {
-    const { error } = await supabase
-      .from('tickets')
-      .update({ attendance_status: status })
-      .eq('id', ticketId);
-
-    if (!error) {
-      setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, attendance_status: status } : t));
-      const updatedTicket = tickets.find(t => t.id === ticketId);
-      if (updatedTicket) {
-        setScannedResult({ ...updatedTicket, attendance_status: status });
-      }
-    } else {
-      alert('Қате орын алды: ' + error.message);
-    }
-  };
-
-  // Статистика есептеулері
   const totalRegistered = tickets.length;
   const totalPresent = tickets.filter(t => t.attendance_status === true).length;
   const totalAbsent = totalRegistered - totalPresent;
@@ -328,7 +359,7 @@ export default function TeacherPage() {
           <div style={{ fontSize: '28px', fontWeight: '900', color: '#38bdf8', marginTop: '6px' }}>{totalRegistered}</div>
         </div>
         <div style={{ ...cardStyle, textAlign: 'center' }}>
-          <div style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '600' }}>Келгендер (Сканерленген)</div>
+          <div style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '600' }}>Келгендер</div>
           <div style={{ fontSize: '28px', fontWeight: '900', color: '#22c55e', marginTop: '6px' }}>{totalPresent}</div>
         </div>
         <div style={{ ...cardStyle, textAlign: 'center' }}>
@@ -337,30 +368,44 @@ export default function TeacherPage() {
         </div>
       </div>
 
-      {/* Әрекеттер: Экспорт / Импорт / Сканерлеу */}
+      {/* КАМЕРА ЖӘНЕ ІЗДЕУ БЛОГЫ */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '24px' }}>
         
-        {/* Сканерлеу / Іздеу блогы (div арқылы түйме жұмыс істейтін етіп өзгертілді) */}
         <div style={cardStyle}>
-          <h3 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>📷 Пропуск сканерлеу немесе код енгізу</h3>
+          <h3 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>📷 Оқушыны қатыстыру (Сканерлеу / Код)</h3>
+          
+          {/* Камераны ашу батырмасы */}
+          {!isCameraActive ? (
+            <button onClick={startCamera} style={{ ...btnPrimary, width: '100%', justifyContent: 'center', marginBottom: '14px', backgroundColor: '#10b981' }}>
+              🎥 Камераны ашу (Сканерлеу)
+            </button>
+          ) : (
+            <div style={{ marginBottom: '14px', textAlign: 'center' }}>
+              <video ref={videoRef} style={{ width: '100%', maxHeight: '200px', borderRadius: '8px', objectFit: 'cover', background: '#000' }} muted playsInline></video>
+              <button onClick={stopCamera} style={{ ...btnDanger, marginTop: '8px', width: '100%' }}>
+                ⏹️ Камераны жабу
+              </button>
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: '10px' }}>
             <input 
               type="text" 
-              placeholder="Код (мысалы: QU-N-OF-12345) немесе ИИН" 
+              placeholder="Код немесе ИИН енгізу" 
               value={searchCode} 
               onChange={(e) => setSearchCode(e.target.value)} 
               style={inputStyle} 
             />
             <button 
               type="button" 
-              onClick={handleScanOrSearch} 
+              onClick={() => handleScanOrSearch()} 
               style={btnPrimary}
             >
               Тексеру
             </button>
           </div>
 
-          {/* Сканерленген немесе ізделген оқушы карточкасы */}
+          {/* Нәтиже карточкасы */}
           {scannedResult && (
             <div style={{ marginTop: '16px', backgroundColor: '#0f172a', padding: '14px', borderRadius: '10px', border: '2px solid #22c55e', display: 'flex', gap: '14px', alignItems: 'center' }}>
               <div style={{ width: '55px', height: '70px', borderRadius: '8px', backgroundColor: '#334155', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -370,21 +415,20 @@ export default function TeacherPage() {
                 <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', color: '#22c55e' }}>✅ Сәтті тіркелді (Келді)</h4>
                 <p style={{ margin: '2px 0', fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>{scannedResult.students?.first_name} {scannedResult.students?.second_name}</p>
                 <p style={{ margin: '2px 0', fontSize: '12px', color: '#94a3b8' }}>Аудитория: <b style={{color: '#38bdf8'}}>{scannedResult.classroom || 'Бөлінбеген'}</b></p>
-                <p style={{ margin: '2px 0', fontSize: '12px', color: '#94a3b8' }}>Тілі: {scannedResult.students?.language} | Бағыты: {scannedResult.school_type}</p>
               </div>
             </div>
           )}
         </div>
 
-        {/* Excel экспорт / импорт блогы */}
+        {/* Excel құралдары */}
         <div style={cardStyle}>
           <h3 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>📊 Excel құралдары</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <button onClick={exportToExcel} style={{ ...btnSecondary, width: '100%', justifyContent: 'center' }}>
-              📥 Тіркелгендерді Excel-ге жүктеу (Export)
+              📥 Тіркелгендерді Excel-ге жүктеу
             </button>
             <div>
-              <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '4px' }}>Аудиторияларды жүктеу (Import Excel/CSV):</label>
+              <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '4px' }}>Аудиторияларды жүктеу (CSV):</label>
               <input type="file" accept=".csv" onChange={handleFileUpload} style={{ fontSize: '13px', color: '#94a3b8' }} />
             </div>
           </div>
@@ -392,7 +436,7 @@ export default function TeacherPage() {
 
       </div>
 
-      {/* Оқушылар тізімі кестесі */}
+      {/* Тізім кестесі */}
       <div style={cardStyle}>
         <h3 style={{ margin: '0 0 16px 0', fontSize: '18px' }}>📋 Осы тестке тіркелгендер тізімі</h3>
         <div style={{ overflowX: 'auto' }}>
@@ -456,7 +500,6 @@ export default function TeacherPage() {
   );
 }
 
-// Стильдер жиынтығы
 const cardStyle = { backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '20px' };
 const inputStyle = { width: '100%', padding: '10px 12px', backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', color: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box' };
 const labelStyle = { display: 'block', fontSize: '13px', fontWeight: '600', color: '#94a3b8', marginBottom: '6px' };
