@@ -140,8 +140,8 @@ export default function AdminPage() {
         const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, ''));
         if (cols.length >= 8) {
           const rawPrice = cols[7] ? parseFloat(cols[7].replace(/[^\d.]/g, '')) : 0;
-          const addressVal = cols[9] || ''; // Индекс колонки адреса
-          const activityStatus = cols[10] ? cols[10].toLowerCase() === 'true' : true; // Тип boolean
+          const addressVal = cols[9] || ''; 
+          const activityStatus = cols[10] ? cols[10].toLowerCase() === 'true' : true; 
 
           newExams.push({
             title: cols[0],
@@ -152,10 +152,11 @@ export default function AdminPage() {
             reg_end_date: parseDate(cols[5]),
             reg_end_time: parseTime(cols[6]),
             price: isNaN(rawPrice) ? 0 : rawPrice,
-            is_active: isActive,
-            address: addressVal,          // <-- Добавили адрес
-            activity_status: activityStatus // <-- Добавили статус активности (boolean)
-          });        }
+            is_active: true,          // Исправлено: заменено с несуществующей переменной isActive на true по умолчанию
+            address: addressVal,          
+            activity_status: activityStatus 
+          });        
+        }
       }
 
       if (newExams.length > 0) {
@@ -185,11 +186,9 @@ export default function AdminPage() {
       let updatedCount = 0;
       for (let i = 1; i < lines.length; i++) {
         const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
-        // Ожидаем, что в файле есть 5-значный код (ticket_code или iin)
         const codeOrIin = cols[0]; 
 
         if (codeOrIin) {
-          // Ищем среди тикетов текущего теста по коду или по ученику
           const targetTicket = tickets.find(t => t.exam_id === examId && (t.ticket_code === codeOrIin || t.student_iin === codeOrIin));
           if (targetTicket) {
             await supabase.from('tickets').update({ is_paid: true }).eq('id', targetTicket.id);
@@ -358,20 +357,23 @@ export default function AdminPage() {
                   <tr style={thTr}>
                     <th style={thStyle}>Атауы</th>
                     <th style={thStyle}>Өткізілетін күні</th>
+                    <th style={thStyle}>Мекен-жайы</th>
                     <th style={thStyle}>Тіркелу мерзімі</th>
                     <th style={thStyle}>Бағасы</th>
                     <th style={thStyle}>Статус</th>
+                    <th style={thStyle}>Активность</th>
                     <th style={thStyle}>Әрекет</th>
                   </tr>
                 </thead>
                 <tbody>
                   {tests.length === 0 ? (
-                    <tr><td colSpan="6" style={tdStyle}>Тесттер әлі жоқ</td></tr>
+                    <tr><td colSpan="8" style={tdStyle}>Тесттер әлі жоқ</td></tr>
                   ) : (
                     tests.map((t) => (
                       <tr key={t.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ ...tdStyle, fontWeight: '600' }}>{t.title}</td>
                         <td style={tdStyle}>{t.exam_date || '—'} {t.exam_time ? `(${t.exam_time.slice(0, 5)})` : ''}</td>
+                        <td style={tdStyle}>{t.address || 'Көрсетілмеген'}</td>
                         <td style={tdStyle}>{t.reg_start_date || '—'} / {t.reg_end_date || '—'}</td>
                         <td style={{ ...tdStyle, fontWeight: 'bold', color: '#16a34a' }}>{t.price} ₸</td>
                         <td style={tdStyle}>
@@ -381,6 +383,9 @@ export default function AdminPage() {
                             onChange={() => toggleActive(t.id, t.is_active)}
                             style={{ cursor: 'pointer', transform: 'scale(1.3)' }}
                           />
+                        </td>
+                        <td style={tdStyle}>
+                          {t.activity_status ? '✅ Белсенді' : '❌ Тоқтатылған'}
                         </td>
                         <td style={tdStyle}>
                           <button onClick={() => handleDeleteExam(t.id)} style={btnSmallDanger}>Өшіру</button>
