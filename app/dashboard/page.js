@@ -99,59 +99,7 @@ export default function DashboardPage() {
       setBookings(filtered);
     }
   }
-const handlePayment = async () => {
-    if (!selectedStudentForReg) return alert('Оқушыны таңдаңыз!');
-    
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
 
-    const studentObj = students.find(s => s.id.toString() === selectedStudentForReg.toString());
-    
-    const schoolLetter = selectedSchoolType === 'НИШ' ? 'N' : selectedSchoolType === 'БИЛ' ? 'B' : 'R';
-    const formatLetter = selectedFormat === 'Онлайн' ? 'ON' : 'OF';
-    const randomDigits = Math.floor(10000 + Math.random() * 90000);
-    const uniqueTicketCode = `QU-${schoolLetter}-${formatLetter}-${randomDigits}`;
-
-    const ticketPayload = {
-      student_id: studentObj.id,
-      exam_id: registerModal.id,
-      five_digit_code: uniqueTicketCode,
-      school_type: selectedSchoolType,
-      exam_format: selectedFormat,
-      payment_status: 'paid',
-      classroom: selectedFormat === 'Офлайн' ? 'Аудитория 101' : 'Онлайн платформа',
-      attendance_status: false,
-      qr_code_data: uniqueTicketCode // <--- Добавлено обязательное поле для базы данных
-    };
-
-    const { data, error } = await supabase.from('tickets').insert([ticketPayload]).select();
-
-    if (error) {
-      return alert('Төлемді сақтау қатесі: ' + error.message);
-    }
-
-    await loadBookings(session.user.id);
-
-    const createdTicket = data[0];
-    setRegisterModal(null);
-    
-    // Сразу открываем сгенерированный пропуск
-    setTicketModal({
-      id: createdTicket?.id,
-      studentName: `${studentObj?.first_name || ''} ${studentObj?.second_name || ''}`,
-      iin: studentObj?.iin,
-      photoUrl: studentObj?.photo_url || '',
-      school: studentObj?.school || '—',
-      examTitle: registerModal.title,
-      examDate: registerModal.exam_date,
-      examTime: registerModal.exam_time,
-      schoolType: selectedSchoolType,
-      examFormat: selectedFormat,
-      classroom: ticketPayload.classroom,
-      uniqueCode: uniqueTicketCode,
-      date: new Date().toLocaleDateString()
-    });
-  };
   const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.href = '/';
@@ -261,7 +209,8 @@ const handlePayment = async () => {
       exam_format: selectedFormat,
       payment_status: 'paid',
       classroom: selectedFormat === 'Офлайн' ? 'Аудитория 101' : 'Онлайн платформа',
-      attendance_status: false
+      attendance_status: false,
+      qr_code_data: uniqueTicketCode // Добавлено обязательное поле для базы данных
     };
 
     const { data, error } = await supabase.from('tickets').insert([ticketPayload]).select();
@@ -650,9 +599,9 @@ const cardStyle = { backgroundColor: '#1e293b', borderRadius: '16px', padding: '
 const btnPrimary = { backgroundColor: '#38bdf8', color: '#0f172a', border: 'none', padding: '10px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' };
 const btnSmallBlue = { backgroundColor: '#0284c7', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' };
 const btnSmallDanger = { backgroundColor: '#ef4444', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' };
-const btnLightDanger = { backgroundColor: '#334155', color: '#f8fafc', border: '1px solid #475569', padding: '10px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', width: '100%' };
-const inputStyle = { backgroundColor: '#0f172a', border: '1px solid #334155', padding: '12px', borderRadius: '8px', color: '#fff', outline: 'none', width: '100%', boxSizing: 'border-box', fontSize: '14px' };
-const labelStyle = { display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '6px', fontWeight: '600' };
+const btnLightDanger = { backgroundColor: '#fee2e2', color: '#dc2626', border: 'none', padding: '10px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' };
 const modalOverlay = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' };
-const modalContent = { backgroundColor: '#1e293b', padding: '28px', borderRadius: '16px', width: '100%', maxWidth: '440px', border: '1px solid #334155', boxSizing: 'border-box' };
-const closeBtn = { background: 'none', border: 'none', color: '#94a3b8', fontSize: '20px', cursor: 'pointer' };
+const modalContent = { backgroundColor: '#1e293b', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '420px', border: '1px solid #334155', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)' };
+const labelStyle = { display: 'block', fontSize: '13px', fontWeight: '600', color: '#94a3b8', marginBottom: '6px' };
+const inputStyle = { width: '100%', padding: '12px', backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', color: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box' };
+const closeBtn = { background: 'none', border: 'none', color: '#94a3b8', fontSize: '18px', cursor: 'pointer', fontWeight: 'bold' };
