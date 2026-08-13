@@ -49,6 +49,8 @@ export default function AdminPage() {
   const [users, setUsers] = useState([]);
   const [students, setStudents] = useState([]);
   const [tests, setTests] = useState([]);
+  const [tickets, setTickets] = useState([]);
+  const [selectedPaymentTest, setSelectedPaymentTest] = useState(null);
 
   useEffect(() => {
     async function checkAuth() {
@@ -66,7 +68,6 @@ export default function AdminPage() {
     if (usersData) setUsers(usersData);
 
     const { data: studentsData } = await supabase.from('students').select('*');
-    
     if (studentsData && usersData) {
       const studentsWithParents = studentsData.map(student => {
         const parentId = student.parent_id || student.user_id;
@@ -83,6 +84,9 @@ export default function AdminPage() {
 
     const { data: testsData } = await supabase.from('exams').select('*').order('exam_date', { ascending: true });
     if (testsData) setTests(testsData);
+
+    const { data: ticketsData } = await supabase.from('tickets').select('*');
+    if (ticketsData) setTickets(ticketsData);
   };
 
   const toggleActive = async (id, currentStatus) => {
@@ -167,6 +171,37 @@ export default function AdminPage() {
     reader.readAsText(file, 'UTF-8');
   };
 
+  const handlePaymentUpload = (event, examId) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const text = e.target.result;
+      const lines = text.split('\n').map(row => row.trim()).filter(Boolean);
+      
+      let updatedCount = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
+        // Ожидаем, что в файле есть 5-значный код (ticket_code или iin)
+        const codeOrIin = cols[0]; 
+
+        if (codeOrIin) {
+          // Ищем среди тикетов текущего теста по коду или по ученику
+          const targetTicket = tickets.find(t => t.exam_id === examId && (t.ticket_code === codeOrIin || t.student_iin === codeOrIin));
+          if (targetTicket) {
+            await supabase.from('tickets').update({ is_paid: true }).eq('id', targetTicket.id);
+            updatedCount++;
+          }
+        }
+      }
+
+      alert(`${updatedCount} оқушының төлемі расталды!`);
+      loadAllData();
+    };
+    reader.readAsText(file, 'UTF-8');
+  };
+
   const handleDeleteExam = async (id) => {
     if (confirm('Бұл тестті өшіруге сенімдісіз бе?')) {
       await supabase.from('exams').delete().eq('id', id);
@@ -190,6 +225,8 @@ export default function AdminPage() {
     );
   }
 
+  const activeTests = tests.filter(t => t.is_active);
+
   return (
     <div className="admin-layout" style={{ backgroundColor: '#f8fafc', minHeight: '100vh', display: 'grid', gridTemplateColumns: '260px 1fr', color: '#0f172a', fontFamily: 'system-ui, sans-serif' }}>
       <style>{`
@@ -210,10 +247,11 @@ export default function AdminPage() {
             QUQU<span style={{ color: '#f43f5e' }}>.</span> admin
           </div>
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <button onClick={() => setActiveTab('users')} style={menuBtn(activeTab === 'users')}>👤 Пайдаланушылар</button>
-            <button onClick={() => setActiveTab('students')} style={menuBtn(activeTab === 'students')}>🎓 Оқушылар</button>
-            <button onClick={() => setActiveTab('tests')} style={menuBtn(activeTab === 'tests')}>📝 Тесттер</button>
-            <button onClick={() => setActiveTab('results')} style={menuBtn(activeTab === 'results')}>📊 Нәтижелер</button>
+            <button onClick={() => { setActiveTab('users'); setSelectedPaymentTest(null); }} style={menuBtn(activeTab === 'users')}>👤 Пайдаланушылар</button>
+            <button onClick={() => { setActiveTab('students'); setSelectedPaymentTest(null); }} style={menuBtn(activeTab === 'students')}>🎓 Оқушылар</button>
+            <button onClick={() => { setActiveTab('tests'); setSelectedPaymentTest(null); }} style={menuBtn(activeTab === 'tests')}>📝 Тесттер</button>
+            <button onClick={() => { setActiveTab('results'); setSelectedPaymentTest(null); }} style={menuBtn(activeTab === 'results')}>📊 Нәтижелер</button>
+            <button onClick={() => { setActiveTab('payments'); setSelectedPaymentTest(null); }} style={menuBtn(activeTab === 'payments')}>💳 Төлем</button>
           </nav>
         </div>
         <button onClick={handleLogout} style={btnLightDanger}>Шығу</button>
@@ -379,6 +417,89 @@ export default function AdminPage() {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'payments' && !selectedPaymentTest && (
+          <div>
+            <h2 style={pageTitle}>Төлем - Белсенді тесттер тізімі</h2>
+            <p style={{ color: '#64748b', fontSize: '14px', marginTop: '6px' }}>Төлем статусын тексеру үшін тест атауын басыңыз:</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px', marginTop: '20px' }}>
+              {activeTests.length === 0 ? (
+                <p style={{ color: '#64748b' }}>Белсенді тесттер жоқ</p>
+              ) : (
+                activeTests.map((t) => (
+                  <div 
+                    key={t.id} 
+                    onClick={() => setSelectedPaymentTest(t)}
+                    style={{ backgroundColor: '#ffffff', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)', transition: 'all 0.2s' }}
+                  >
+                    <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', color: '#0284c7' }}>{t.title}</h3>
+                    <p style={{ margin: '4px 0', fontSize: '14px', color: '#475569' }}>Күні: {t.exam_date || '—'}</p>
+                    <p style={{ margin: '4px 0', fontSize: '14px', fontWeight: 'bold', color: '#16a34a' }}>Бағасы: {t.price} ₸</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'payments' && selectedPaymentTest && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <button onClick={() => setSelectedPaymentTest(null)} style={{ ...btnBlueUpload, backgroundColor: '#64748b', marginBottom: '10px', fontSize: '13px', padding: '6px 12px' }}>
+                  ← Артқа қайту
+                </button>
+                <h2 style={pageTitle}>{selectedPaymentTest.title} - Төлемдер тізімі</h2>
+              </div>
+              <label style={btnGreen}>
+                📥 Төлегендер тізімін жүктеу (Excel)
+                <input type="file" accept=".csv" style={{ display: 'none' }} onChange={(e) => handlePaymentUpload(e, selectedPaymentTest.id)} />
+              </label>
+            </div>
+
+            <div style={tableContainer}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr style={thTr}>
+                    <th style={thStyle}>Фото</th>
+                    <th style={thStyle}>5-значный код</th>
+                    <th style={thStyle}>Аты-жөні</th>
+                    <th style={thStyle}>Мектеп / Сынып</th>
+                    <th style={thStyle}>Төлем статусы</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tickets.filter(tk => tk.exam_id === selectedPaymentTest.id).length === 0 ? (
+                    <tr><td colSpan="5" style={tdStyle}>Бұл тестке бронь жасаған оқушылар жоқ</td></tr>
+                  ) : (
+                    tickets.filter(tk => tk.exam_id === selectedPaymentTest.id).map((tk) => {
+                      const student = students.find(s => s.id === tk.student_id || s.iin === tk.student_iin);
+                      return (
+                        <tr key={tk.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={tdStyle}>
+                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                              {student && student.photo_url ? <img src={student.photo_url} alt="" style={{width: '100%', height: '100%', objectFit: 'cover'}} /> : '👤'}
+                            </div>
+                          </td>
+                          <td style={{ ...tdStyle, fontWeight: '800', color: '#0f172a', letterSpacing: '1px' }}>{tk.ticket_code || tk.code || '—'}</td>
+                          <td style={{ ...tdStyle, fontWeight: '600' }}>{student ? `${student.first_name} ${student.second_name}` : (tk.student_name || 'Белгісіз')}</td>
+                          <td style={tdStyle}>{student ? `${student.school || '—'}, ${student.grade}-сынып` : '—'}</td>
+                          <td style={tdStyle}>
+                            {tk.is_paid ? (
+                              <span style={{ backgroundColor: '#dcfce7', color: '#16a34a', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', fontSize: '13px' }}>✅ Оплачено</span>
+                            ) : (
+                              <span style={{ backgroundColor: '#fee2e2', color: '#dc2626', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', fontSize: '13px' }}>❌ Оплачена емес</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
