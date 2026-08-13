@@ -63,7 +63,7 @@ export default function AdminPage() {
 
   const loadAllData = async () => {
     // Загружаем пользователей из таблицы profiles (где id совпадает с auth.users id)
-    const { data: usersData } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+    const { data: usersData } = await supabase.from('profiles').select('*');
     if (usersData) setUsers(usersData);
 
     // Загружаем всех учеников
