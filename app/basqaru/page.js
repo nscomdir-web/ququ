@@ -66,8 +66,8 @@ export default function AdminPage() {
     const { data: usersData } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
     if (usersData) setUsers(usersData);
 
-    // Загружаем всех учеников со всеми полями
-    const { data: studentsData } = await supabase.from('students').select('*');
+    // Загружаем всех учеников вместе с именем родителя из таблицы profiles
+    const { data: studentsData } = await supabase.from('students').select('*, profiles:parent_id(name)');
     if (studentsData) setStudents(studentsData);
 
     // Загружаем тесты
@@ -267,7 +267,7 @@ export default function AdminPage() {
                     <th style={thStyle}>ЖСН (ИИН)</th>
                     <th style={thStyle}>Мектеп / Қала</th>
                     <th style={thStyle}>Сынып / Тіл</th>
-                    <th style={thStyle}>Ата-ана ID</th>
+                    <th style={thStyle}>Ата-ана</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -285,7 +285,7 @@ export default function AdminPage() {
                         <td style={tdStyle}>{s.iin}</td>
                         <td style={tdStyle}>{s.school || '—'} <br/><span style={{fontSize: '12px', color: '#64748b'}}>{s.city}</span></td>
                         <td style={tdStyle}>{s.grade} сынып <br/><span style={{fontSize: '12px', color: '#64748b'}}>{s.language}</span></td>
-                        <td style={{ ...tdStyle, fontSize: '11px', color: '#64748b' }}>{s.parent_id || s.user_id || '—'}</td>
+                        <td style={{ ...tdStyle, fontWeight: '600', color: '#0284c7' }}>{s.profiles?.name || 'Көрсетілмеген'}</td>
                       </tr>
                     ))
                   )}
