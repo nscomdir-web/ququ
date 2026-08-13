@@ -22,73 +22,238 @@ function getSupabaseClient() {
   return createClient(rawUrl, rawKey);
 }
 
-// --- DOWNLOAD PDF / PRINT FUNCTION ---
+// --- DOWNLOAD PDF / PRINT FUNCTION (Официальный дизайн формата А4) ---
 const downloadPDF = (ticket) => {
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
       <html>
         <head>
-          <title>QUQU - Тестке кіру қағазы</title>
+          <title>QUQU - Тестке кіру қағазы (A4)</title>
           <style>
-            @page { size: A4; margin: 0; }
-            body { font-family: 'Segoe UI', Arial, sans-serif; color: #0f172a; background: #ffffff; margin: 0; padding: 0; -webkit-print-color-adjust: exact; }
-            .a4-page { width: 210mm; height: 297mm; padding: 20mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #ffffff; }
-            .ticket-box { border: 2px dashed #0284c7; padding: 24px; border-radius: 16px; background: #f8fafc; box-sizing: border-box; width: 100%; max-width: 500px; }
-            .top-section { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 14px; }
-            .title-area { font-size: 20px; font-weight: 900; color: #0284c7; text-transform: uppercase; }
-            .student-info-box { display: flex; gap: 14px; align-items: center; background: #ffffff; padding: 12px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 12px; }
-            .student-photo { width: 65px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid #cbd5e1; background: #e2e8f0; }
-            .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; background: #ffffff; padding: 12px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 12px; font-size: 13px; }
-            .detail-item { display: flex; flex-direction: column; }
-            .detail-label { font-size: 10px; color: #64748b; font-weight: 600; text-transform: uppercase; }
-            .detail-value { font-weight: 700; color: #0f172a; }
-            .qr-section { text-align: center; background: #ffffff; padding: 12px; border-radius: 12px; border: 1px solid #e2e8f0; }
-            .qr-code { width: 95px; height: 95px; }
-            .code-text { font-size: 15px; font-weight: 800; color: #0284c7; margin-top: 6px; letter-spacing: 1px; }
-            .warning-box { margin-top: 12px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 10px; border-radius: 8px; font-size: 11px; font-weight: 700; text-align: center; }
+            @page { 
+              size: A4 portrait; 
+              margin: 0; 
+            }
+            body { 
+              font-family: 'Segoe UI', Arial, sans-serif; 
+              color: #0f172a; 
+              background: #e2e8f0; 
+              margin: 0; 
+              padding: 0; 
+              -webkit-print-color-adjust: exact; 
+              print-color-adjust: exact;
+            }
+            .a4-page { 
+              width: 210mm; 
+              height: 297mm; 
+              padding: 15mm; 
+              box-sizing: border-box; 
+              background: #ffffff; 
+              display: flex;
+              flex-direction: column;
+              justify-content: space-between;
+              position: relative;
+              page-break-after: always;
+            }
+            /* Дизайн пропуска */
+            .ticket-card { 
+              border: 2px solid #0284c7; 
+              border-radius: 20px; 
+              background: #ffffff; 
+              padding: 30px; 
+              box-sizing: border-box; 
+              width: 100%; 
+              box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            }
+            .header-row { 
+              display: flex; 
+              justify-content: space-between; 
+              align-items: center; 
+              border-bottom: 2px solid #f1f5f9; 
+              padding-bottom: 20px; 
+              margin-bottom: 24px; 
+            }
+            .brand-title { 
+              font-size: 28px; 
+              font-weight: 900; 
+              color: #0284c7; 
+              letter-spacing: -0.5px; 
+            }
+            .brand-subtitle { 
+              font-size: 12px; 
+              font-weight: 700; 
+              color: #64748b; 
+              text-transform: uppercase; 
+              letter-spacing: 1px; 
+            }
+            .badge-code { 
+              background: #f0f9ff; 
+              border: 1px solid #bae6fd; 
+              padding: 8px 16px; 
+              border-radius: 10px; 
+              font-size: 14px; 
+              font-weight: 800; 
+              color: #0369a1; 
+            }
+            .student-section { 
+              display: flex; 
+              gap: 20px; 
+              align-items: center; 
+              background: #f8fafc; 
+              padding: 20px; 
+              border-radius: 14px; 
+              border: 1px solid #e2e8f0; 
+              margin-bottom: 20px; 
+            }
+            .student-photo { 
+              width: 80px; 
+              height: 100px; 
+              object-fit: cover; 
+              border-radius: 8px; 
+              border: 1px solid #cbd5e1; 
+              background: #e2e8f0; 
+            }
+            .info-grid { 
+              display: grid; 
+              grid-template-columns: 1fr 1fr; 
+              gap: 12px 20px; 
+              background: #f8fafc; 
+              padding: 20px; 
+              border-radius: 14px; 
+              border: 1px solid #e2e8f0; 
+              margin-bottom: 20px; 
+            }
+            .detail-item { 
+              display: flex; 
+              flex-direction: column; 
+            }
+            .detail-label { 
+              font-size: 11px; 
+              color: #64748b; 
+              font-weight: 700; 
+              text-transform: uppercase; 
+              margin-bottom: 4px; 
+            }
+            .detail-value { 
+              font-size: 15px; 
+              font-weight: 700; 
+              color: #0f172a; 
+            }
+            .footer-row { 
+              display: flex; 
+              justify-content: space-between; 
+              align-items: center; 
+              background: #ffffff; 
+              padding: 15px 20px; 
+              border-radius: 14px; 
+              border: 1px solid #e2e8f0; 
+            }
+            .qr-container { 
+              text-align: center; 
+            }
+            .qr-code { 
+              width: 90px; 
+              height: 90px; 
+            }
+            .warning-box { 
+              background: #fff1f2; 
+              border: 1px solid #fecdd3; 
+              color: #be123c; 
+              padding: 14px; 
+              border-radius: 12px; 
+              font-size: 12px; 
+              font-weight: 700; 
+              text-align: center; 
+              margin-top: 20px; 
+            }
+            .instructions {
+              margin-top: 30px;
+              border-top: 1px dashed #cbd5e1;
+              padding-top: 20px;
+              font-size: 11px;
+              color: #64748b;
+              line-height: 1.5;
+            }
           </style>
         </head>
         <body>
           <div class="a4-page">
-            <div class="ticket-box">
-              <div class="top-section">
+            <div class="ticket-card">
+              <!-- Шапка -->
+              <div class="header-row">
                 <div>
-                  <div class="title-area">QUQU</div>
-                  <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Тестке кіру ресми қағазы</div>
+                  <div class="brand-title">QUQU</div>
+                  <div class="brand-subtitle">Тестке қатысудың ресми өткізу қағазы</div>
                 </div>
-                <div style="font-size: 12px; font-weight: bold; color: #475569;">Код: ${ticket.uniqueCode}</div>
+                <div class="badge-code">Бронь коды: ${ticket.uniqueCode}</div>
               </div>
-              <div class="student-info-box">
+
+              <!-- Оқушы мәліметі -->
+              <div class="student-section">
                 <div>
-                  ${ticket.photoUrl ? `<img class="student-photo" src="${ticket.photoUrl}" alt="Фото" />` : `<div class="student-photo" style="display:flex; align-items:center; justify-content:center; font-size:10px; color:#666;">Фото жоқ</div>`}
+                  ${ticket.photoUrl ? `<img class="student-photo" src="${ticket.photoUrl}" alt="Фото" />` : `<div class="student-photo" style="display:flex; align-items:center; justify-content:center; font-size:10px; color:#666; text-align:center;">Фото жоқ</div>`}
                 </div>
+                <div style="flex: 1;">
+                  <div style="font-size: 20px; font-weight: 900; color: #0f172a; margin-bottom: 6px;">${ticket.studentName}</div>
+                  <div style="font-size: 13px; color: #475569; margin-bottom: 3px;">ЖСН (ИИН): <b>${ticket.iin}</b></div>
+                  <div style="font-size: 13px; color: #475569; margin-bottom: 3px;">Оқушы коды: <b style="color: #0284c7;">${ticket.studentCode || '—'}</b></div>
+                  <div style="font-size: 13px; color: #475569;">Тест тапсыру тілі: <b>${ticket.language || 'Қазақша'}</b></div>
+                </div>
+              </div>
+
+              <!-- Тест туралы ақпарат -->
+              <div class="info-grid">
+                <div class="detail-item">
+                  <span class="detail-label">Тест атауы</span>
+                  <span class="detail-value">${ticket.examTitle}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Бағыты / Форматы</span>
+                  <span class="detail-value" style="color: #0284c7;">${ticket.schoolType} — ${ticket.examFormat}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Өтетін күні мен уақыты</span>
+                  <span class="detail-value">${ticket.examDate} (${ticket.examTime})</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Мекен-жайы (Classroom)</span>
+                  <span class="detail-value">${ticket.classroom || 'Көрсетілмеген'}</span>
+                </div>
+              </div>
+
+              <!-- QR және код -->
+              <div class="footer-row">
                 <div>
-                  <div style="font-size: 15px; font-weight: 800; color: #0f172a;">${ticket.studentName}</div>
-                  <div style="font-size: 12px; color: #475569; margin-top: 3px;">ЖСН (ИИН): <b>${ticket.iin}</b></div>
-                  <div style="font-size: 12px; color: #475569; margin-top: 2px;">Оқушы коды: <b>${ticket.studentCode || '—'}</b></div>
-                  <div style="font-size: 12px; color: #475569; margin-top: 2px;">Тілі (Бланк): <b>${ticket.language || 'Қазақша'}</b></div>
+                  <div style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px;">Бақылаушы үшін QR-код:</div>
+                  <div style="font-size: 11px; color: #64748b;">Қағаздың түпнұсқалығы осы код арқылы тексеріледі.</div>
+                </div>
+                <div class="qr-container">
+                  <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(ticket.uniqueCode)}" alt="QR" />
                 </div>
               </div>
-              <div class="details-grid">
-                <div class="detail-item"><span class="detail-label">Тест атауы</span><span class="detail-value">${ticket.examTitle}</span></div>
-                <div class="detail-item"><span class="detail-label">Форматы</span><span class="detail-value" style="color: #0284c7;">${ticket.examFormat}</span></div>
-                <div class="detail-item" style="grid-column: span 2;"><span class="detail-label">Өтетін күні мен уақыты</span><span class="detail-value">${ticket.examDate} (${ticket.examTime})</span></div>
-                <div class="detail-item" style="grid-column: span 2;"><span class="detail-label">Тест Мекен-жайы (Address)</span><span class="detail-value">${ticket.classroom || 'Көрсетілмеген'}</span></div>
+
+              <!-- Ескерту -->
+              <div class="warning-box">
+                ⚠️ НАЗАР АУДАРЫҢЫЗ! Тестке келерде осы қағазды басып шығарып (немесе телефоннан көрсетіп) және қатысушының жеке басын куәландыратын құжатын (туу туралы куәлік / паспорт) өзіңізбен бірге міндетті түрде әкеліңіз!
               </div>
-              <div class="qr-section">
-                <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(ticket.uniqueCode)}" alt="QR" />
-                <div class="code-text">${ticket.uniqueCode}</div>
-              </div>
-              <div class="warning-box">⚠️ Назар аударыңыз! Тестке келгенде осы қағазды және туу туралы куәлікті өзіңізбен бірге міндетті түрде әкелуіңіз қажет!</div>
+            </div>
+
+            <!-- Инструкция внизу листа A4 -->
+            <div class="instructions">
+              <b>Қосымша ақпарат:</b> Бұл құжат QUQU білім беру платформасы арқылы автоматты түрде генерацияланды. Тіркеу күні: ${ticket.date || '—'}. Сұрақтар бойынша қолдау қызметіне хабарласыңыз.
             </div>
           </div>
-          <script>window.onload = function() { window.print(); };</script>
+
+          <script>
+            window.onload = function() { 
+              window.print(); 
+            };
+          </script>
         </body>
       </html>
     `);
     printWindow.document.close();
 };
-
 export default function DashboardPage() {
   const [supabase] = useState(() => getSupabaseClient());
   const [loading, setLoading] = useState(true);
