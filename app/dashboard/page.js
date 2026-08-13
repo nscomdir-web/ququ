@@ -99,7 +99,59 @@ export default function DashboardPage() {
       setBookings(filtered);
     }
   }
+const handlePayment = async () => {
+    if (!selectedStudentForReg) return alert('Оқушыны таңдаңыз!');
+    
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
 
+    const studentObj = students.find(s => s.id.toString() === selectedStudentForReg.toString());
+    
+    const schoolLetter = selectedSchoolType === 'НИШ' ? 'N' : selectedSchoolType === 'БИЛ' ? 'B' : 'R';
+    const formatLetter = selectedFormat === 'Онлайн' ? 'ON' : 'OF';
+    const randomDigits = Math.floor(10000 + Math.random() * 90000);
+    const uniqueTicketCode = `QU-${schoolLetter}-${formatLetter}-${randomDigits}`;
+
+    const ticketPayload = {
+      student_id: studentObj.id,
+      exam_id: registerModal.id,
+      five_digit_code: uniqueTicketCode,
+      school_type: selectedSchoolType,
+      exam_format: selectedFormat,
+      payment_status: 'paid',
+      classroom: selectedFormat === 'Офлайн' ? 'Аудитория 101' : 'Онлайн платформа',
+      attendance_status: false,
+      qr_code_data: uniqueTicketCode // <--- Добавлено обязательное поле для базы данных
+    };
+
+    const { data, error } = await supabase.from('tickets').insert([ticketPayload]).select();
+
+    if (error) {
+      return alert('Төлемді сақтау қатесі: ' + error.message);
+    }
+
+    await loadBookings(session.user.id);
+
+    const createdTicket = data[0];
+    setRegisterModal(null);
+    
+    // Сразу открываем сгенерированный пропуск
+    setTicketModal({
+      id: createdTicket?.id,
+      studentName: `${studentObj?.first_name || ''} ${studentObj?.second_name || ''}`,
+      iin: studentObj?.iin,
+      photoUrl: studentObj?.photo_url || '',
+      school: studentObj?.school || '—',
+      examTitle: registerModal.title,
+      examDate: registerModal.exam_date,
+      examTime: registerModal.exam_time,
+      schoolType: selectedSchoolType,
+      examFormat: selectedFormat,
+      classroom: ticketPayload.classroom,
+      uniqueCode: uniqueTicketCode,
+      date: new Date().toLocaleDateString()
+    });
+  };
   const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.href = '/';
