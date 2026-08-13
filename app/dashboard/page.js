@@ -22,81 +22,152 @@ const downloadPDF = (ticket) => {
         <head>
           <title>QUQU - Тестке кіру қағазы</title>
           <style>
-            @page { size: A4; margin: 15mm; }
-            body { font-family: 'Segoe UI', Arial, sans-serif; color: #000; background: #fff; margin: 0; padding: 20px; }
-            .ticket-box { border: 2px solid #000; padding: 25px; max-width: 600px; margin: 0 auto; border-radius: 8px; position: relative; }
+            @page { size: A4; margin: 0; }
+            body { 
+              font-family: 'Segoe UI', Arial, sans-serif; 
+              color: #0f172a; 
+              background: #ffffff; 
+              margin: 0; 
+              padding: 0; 
+              -webkit-print-color-adjust: exact;
+            }
+            .a4-page {
+              width: 210mm;
+              height: 297mm;
+              padding: 20mm;
+              box-sizing: border-box;
+              display: flex;
+              flex-direction: column;
+              justify-content: space-between;
+              background: #ffffff;
+            }
+            .ticket-box { 
+              border: 2px dashed #0284c7; 
+              padding: 24px; 
+              border-radius: 16px; 
+              background: #f8fafc; 
+              box-sizing: border-box; 
+              width: 100%; 
+            }
             
             /* Жоғарғы бөлік (Атауы және Сурет) */
-            .top-section { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 15px; }
-            .title-area { font-size: 24px; font-weight: bold; text-transform: uppercase; line-height: 1.2; }
-            .student-photo { width: 90px; height: 110px; object-fit: cover; border: 1px solid #000; background: #eee; }
+            .top-section { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 16px; margin-bottom: 16px; }
+            .title-area { font-size: 22px; font-weight: 900; color: #0284c7; text-transform: uppercase; line-height: 1.2; }
+            
+            .student-info-box {
+              display: flex;
+              gap: 16px;
+              align-items: center;
+              background: #ffffff;
+              padding: 14px;
+              border-radius: 12px;
+              border: 1px solid #e2e8f0;
+              margin-bottom: 16px;
+            }
+            .student-photo { width: 70px; height: 85px; object-fit: cover; border-radius: 8px; border: 1px solid #cbd5e1; background: #e2e8f0; }
 
             /* Мәліметтер тізімі */
-            .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #ccc; font-size: 15px; }
-            .info-label { font-weight: bold; color: #333; width: 35%; }
-            .info-value { width: 65%; text-align: right; }
+            .details-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 8px 16px;
+              background: #ffffff;
+              padding: 14px;
+              border-radius: 12px;
+              border: 1px solid #e2e8f0;
+              margin-bottom: 16px;
+              font-size: 14px;
+            }
+            .detail-item { display: flex; flex-direction: column; }
+            .detail-label { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; }
+            .detail-value { font-weight: 700; color: #0f172a; }
 
             /* QR және код бөлігі */
-            .qr-section { text-align: center; margin-top: 25px; padding-top: 15px; border-top: 1px dashed #000; }
-            .qr-code { width: 130px; height: 130px; }
-            .code-text { font-size: 18px; font-weight: bold; margin-top: 8px; letter-spacing: 1px; }
+            .qr-section { text-align: center; background: #ffffff; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0; }
+            .qr-code { width: 100px; height: 100px; }
+            .code-text { font-size: 16px; font-weight: 800; color: #0284c7; margin-top: 8px; letter-spacing: 1px; }
             
-            .footer { text-align: center; font-size: 11px; margin-top: 20px; color: #333; }
+            .warning-box {
+              margin-top: 16px;
+              background: #fef2f2;
+              border: 1px solid #fecaca;
+              color: #991b1b;
+              padding: 12px;
+              border-radius: 8px;
+              font-size: 12px;
+              font-weight: 700;
+              text-align: center;
+            }
           </style>
         </head>
         <body>
-          <div class="ticket-box">
-            
-            <!-- Жоғарғы блок -->
-            <div class="top-section">
-              <div class="title-area">
-                QUQU<br><span style="font-size: 18px; font-weight: normal;">Тестке кіру қағазы</span>
+          <div class="a4-page">
+            <div class="ticket-box">
+              
+              <!-- Жоғарғы блок -->
+              <div class="top-section">
+                <div>
+                  <div class="title-area">QUQU</div>
+                  <div style="font-size: 13px; font-weight: 700; color: #64748b; text-transform: uppercase;">Тестке кіру ресми қағазы</div>
+                </div>
+                <div style="font-size: 13px; font-weight: bold; color: #475569;">
+                  Код: ${ticket.uniqueCode}
+                </div>
               </div>
-              <div>
-                ${ticket.photoUrl 
-                  ? `<img class="student-photo" src="${ticket.photoUrl}" alt="Оқушы фотосы" />` 
-                  : `<div class="student-photo" style="display:flex; align-items:center; justifyContent:center; font-size:11px; color:#666;">Фото жоқ</div>`
-                }
+
+              <!-- Оқушы ақпараты және суреті -->
+              <div class="student-info-box">
+                <div>
+                  ${ticket.photoUrl 
+                    ? `<img class="student-photo" src="${ticket.photoUrl}" alt="Оқушы фотосы" />` 
+                    : `<div class="student-photo" style="display:flex; align-items:center; justify-content:center; font-size:11px; color:#666;">Фото жоқ</div>`
+                  }
+                </div>
+                <div>
+                  <div style="font-size: 16px; font-weight: 800; color: #0f172a;">
+                    ${ticket.studentName}
+                  </div>
+                  <div style="font-size: 13px; color: #475569; margin-top: 4px;">
+                    ЖСН (ИИН): <b>${ticket.iin}</b>
+                  </div>
+                  <div style="font-size: 13px; color: #475569; margin-top: 2px;">
+                    Тілі (Бланк): <b>${ticket.language || 'Қазақша'}</b>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <!-- Негізгі ақпараттар -->
-            <div class="info-row">
-              <span class="info-label">Сынақ Қатысушысы:</span>
-              <span class="info-value"><strong>${ticket.studentName}</strong></span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">ЖСН (ИИН):</span>
-              <span class="info-value">${ticket.iin}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Бағыты:</span>
-              <span class="info-value">${ticket.schoolType}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Тест атауы:</span>
-              <span class="info-value">${ticket.examTitle}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Форматы:</span>
-              <span class="info-value">${ticket.examFormat}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Күні мен уақыты:</span>
-              <span class="info-value">${ticket.examDate} / ${ticket.examTime}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Тест Мекен-жайы (Address):</span>
-              <span class="info-value">${ticket.classroom || 'Аудитория көрсетілмеген'}</span>
-            </div>
+              <!-- Негізгі ақпараттар кестесі -->
+              <div class="details-grid">
+                <div class="detail-item">
+                  <span class="detail-label">Тест атауы</span>
+                  <span class="detail-value">${ticket.examTitle}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Форматы</span>
+                  <span class="detail-value" style="color: #0284c7;">${ticket.examFormat}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Өтетін күні мен уақыты</span>
+                  <span class="detail-value">${ticket.examDate} (${ticket.examTime})</span>
+                </div>
+                <div class="detail-item" style="grid-column: span 2;">
+                  <span class="detail-label">Тест Мекен-жайы (Address)</span>
+                  <span class="detail-value">${ticket.classroom || 'Көрсетілмеген'}</span>
+                </div>
+              </div>
 
-            <!-- QR код пен 5 таңбалы код -->
-            <div class="qr-section">
-              <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(ticket.uniqueCode)}" alt="QR" />
-              <div class="code-text">${ticket.uniqueCode}</div>
+              <!-- QR код пен QU коды -->
+              <div class="qr-section">
+                <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent(ticket.uniqueCode)}" alt="QR" />
+                <div class="code-text">${ticket.uniqueCode}</div>
+              </div>
+              
+              <!-- Міндетті ескерту -->
+              <div class="warning-box">
+                ⚠️ Назар аударыңыз! Тестке келгенде осы қағазды (немесе электронды нұсқасын) және жеке куәлікті/ту туралы куәлікті өзіңізбен бірге міндетті түрде әкелуіңіз қажет!
+              </div>
+
             </div>
-            
-            <div class="footer">Бұл құжат электронды түрде жасалған. Жарамдылығын тексеру үшін QR кодты қолданыңыз.</div>
           </div>
 
           <script>
@@ -109,7 +180,6 @@ const downloadPDF = (ticket) => {
     `);
     printWindow.document.close();
 };
-
 
 
 
