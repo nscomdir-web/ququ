@@ -15,6 +15,7 @@ function getSupabaseClient() {
   return createClient(rawUrl, rawKey);
 }
 
+// --- DOWNLOAD PDF / PRINT FUNCTION ---
 const downloadPDF = (ticket) => {
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
@@ -38,7 +39,8 @@ const downloadPDF = (ticket) => {
               box-sizing: border-box;
               display: flex;
               flex-direction: column;
-              justify-content: space-between;
+              justify-content: center;
+              align-items: center;
               background: #ffffff;
             }
             .ticket-box { 
@@ -47,54 +49,51 @@ const downloadPDF = (ticket) => {
               border-radius: 16px; 
               background: #f8fafc; 
               box-sizing: border-box; 
-              width: 100%; 
+              width: 100%;
+              max-width: 500px;
             }
-            
-            /* Жоғарғы бөлік (Атауы және Сурет) */
-            .top-section { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 16px; margin-bottom: 16px; }
-            .title-area { font-size: 22px; font-weight: 900; color: #0284c7; text-transform: uppercase; line-height: 1.2; }
+            .top-section { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 14px; }
+            .title-area { font-size: 20px; font-weight: 900; color: #0284c7; text-transform: uppercase; }
             
             .student-info-box {
               display: flex;
-              gap: 16px;
+              gap: 14px;
               align-items: center;
               background: #ffffff;
-              padding: 14px;
+              padding: 12px;
               border-radius: 12px;
               border: 1px solid #e2e8f0;
-              margin-bottom: 16px;
+              margin-bottom: 12px;
             }
-            .student-photo { width: 70px; height: 85px; object-fit: cover; border-radius: 8px; border: 1px solid #cbd5e1; background: #e2e8f0; }
+            .student-photo { width: 65px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid #cbd5e1; background: #e2e8f0; }
 
-            /* Мәліметтер тізімі */
             .details-grid {
               display: grid;
               grid-template-columns: 1fr 1fr;
-              gap: 8px 16px;
+              gap: 8px 12px;
               background: #ffffff;
-              padding: 14px;
+              padding: 12px;
               border-radius: 12px;
               border: 1px solid #e2e8f0;
-              margin-bottom: 16px;
-              font-size: 14px;
+              margin-bottom: 12px;
+              font-size: 13px;
             }
             .detail-item { display: flex; flex-direction: column; }
-            .detail-label { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; }
+            .detail-label { font-size: 10px; color: #64748b; font-weight: 600; text-transform: uppercase; }
             .detail-value { font-weight: 700; color: #0f172a; }
 
-            /* QR және код бөлігі */
-            .qr-section { text-align: center; background: #ffffff; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0; }
-            .qr-code { width: 100px; height: 100px; }
-            .code-text { font-size: 16px; font-weight: 800; color: #0284c7; margin-top: 8px; letter-spacing: 1px; }
+            .qr-section { text-align: center; background: #ffffff; padding: 12px; border-radius: 12px; border: 1px solid #e2e8f0; }
+            .qr-code { width: 95px; height: 95px; }
+            .code-text { font-size: 15px; font-weight: 800; color: #0284c7; margin-top: 6px; letter-spacing: 1px; }
             
             .warning-box {
-              margin-top: 16px;
+              margin-top: 12px;
               background: #fef2f2;
               border: 1px solid #fecaca;
               color: #991b1b;
-              padding: 12px;
+              padding: 10px;
               border-radius: 8px;
-              font-size: 12px;
+              font-size: 11px;
               font-weight: 700;
               text-align: center;
             }
@@ -103,40 +102,39 @@ const downloadPDF = (ticket) => {
         <body>
           <div class="a4-page">
             <div class="ticket-box">
-              
-              <!-- Жоғарғы блок -->
               <div class="top-section">
                 <div>
                   <div class="title-area">QUQU</div>
-                  <div style="font-size: 13px; font-weight: 700; color: #64748b; text-transform: uppercase;">Тестке кіру ресми қағазы</div>
+                  <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Тестке кіру ресми қағазы</div>
                 </div>
-                <div style="font-size: 13px; font-weight: bold; color: #475569;">
+                <div style="font-size: 12px; font-weight: bold; color: #475569;">
                   Код: ${ticket.uniqueCode}
                 </div>
               </div>
 
-              <!-- Оқушы ақпараты және суреті -->
               <div class="student-info-box">
                 <div>
                   ${ticket.photoUrl 
-                    ? `<img class="student-photo" src="${ticket.photoUrl}" alt="Оқушы фотосы" />` 
-                    : `<div class="student-photo" style="display:flex; align-items:center; justify-content:center; font-size:11px; color:#666;">Фото жоқ</div>`
+                    ? `<img class="student-photo" src="${ticket.photoUrl}" alt="Фото" />` 
+                    : `<div class="student-photo" style="display:flex; align-items:center; justify-content:center; font-size:10px; color:#666;">Фото жоқ</div>`
                   }
                 </div>
                 <div>
-                  <div style="font-size: 16px; font-weight: 800; color: #0f172a;">
+                  <div style="font-size: 15px; font-weight: 800; color: #0f172a;">
                     ${ticket.studentName}
                   </div>
-                  <div style="font-size: 13px; color: #475569; margin-top: 4px;">
+                  <div style="font-size: 12px; color: #475569; margin-top: 3px;">
                     ЖСН (ИИН): <b>${ticket.iin}</b>
                   </div>
-                  <div style="font-size: 13px; color: #475569; margin-top: 2px;">
+                  <div style="font-size: 12px; color: #475569; margin-top: 2px;">
+                    Оқушы коды: <b>${ticket.studentCode || '—'}</b>
+                  </div>
+                  <div style="font-size: 12px; color: #475569; margin-top: 2px;">
                     Тілі (Бланк): <b>${ticket.language || 'Қазақша'}</b>
                   </div>
                 </div>
               </div>
 
-              <!-- Негізгі ақпараттар кестесі -->
               <div class="details-grid">
                 <div class="detail-item">
                   <span class="detail-label">Тест атауы</span>
@@ -146,7 +144,7 @@ const downloadPDF = (ticket) => {
                   <span class="detail-label">Форматы</span>
                   <span class="detail-value" style="color: #0284c7;">${ticket.examFormat}</span>
                 </div>
-                <div class="detail-item">
+                <div class="detail-item" style="grid-column: span 2;">
                   <span class="detail-label">Өтетін күні мен уақыты</span>
                   <span class="detail-value">${ticket.examDate} (${ticket.examTime})</span>
                 </div>
@@ -156,24 +154,18 @@ const downloadPDF = (ticket) => {
                 </div>
               </div>
 
-              <!-- QR код пен QU коды -->
               <div class="qr-section">
-                <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent(ticket.uniqueCode)}" alt="QR" />
+                <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(ticket.uniqueCode)}" alt="QR" />
                 <div class="code-text">${ticket.uniqueCode}</div>
               </div>
               
-              <!-- Міндетті ескерту -->
               <div class="warning-box">
                 ⚠️ Назар аударыңыз! Тестке келгенде осы қағазды (немесе электронды нұсқасын) және жеке куәлікті/ту туралы куәлікті өзіңізбен бірге міндетті түрде әкелуіңіз қажет!
               </div>
-
             </div>
           </div>
-
           <script>
-            window.onload = function() {
-              window.print();
-            };
+            window.onload = function() { window.print(); };
           </script>
         </body>
       </html>
