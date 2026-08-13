@@ -62,13 +62,27 @@ export default function AdminPage() {
   }, [supabase]);
 
   const loadAllData = async () => {
-    // Загружаем пользователей из простой таблицы profiles
+    // Загружаем пользователей из таблицы profiles (где id совпадает с auth.users id)
     const { data: usersData } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
     if (usersData) setUsers(usersData);
 
-    // Загружаем всех учеников вместе с именем родителя из таблицы profiles
-    const { data: studentsData } = await supabase.from('students').select('*, profiles:parent_id(name)');
-    if (studentsData) setStudents(studentsData);
+    // Загружаем всех учеников
+    const { data: studentsData } = await supabase.from('students').select('*');
+    
+    if (studentsData && usersData) {
+      const studentsWithParents = studentsData.map(student => {
+        const parentId = student.parent_id || student.user_id;
+        // Ищем в profiles пользователя, чей id совпадает с parent_id ученика
+        const parent = usersData.find(u => u.id === parentId);
+        return {
+          ...student,
+          parent_name: parent ? parent.name : 'Көрсетілмеген'
+        };
+      });
+      setStudents(studentsWithParents);
+    } else if (studentsData) {
+      setStudents(studentsData);
+    }
 
     // Загружаем тесты
     const { data: testsData } = await supabase.from('exams').select('*').order('exam_date', { ascending: true });
@@ -285,7 +299,7 @@ export default function AdminPage() {
                         <td style={tdStyle}>{s.iin}</td>
                         <td style={tdStyle}>{s.school || '—'} <br/><span style={{fontSize: '12px', color: '#64748b'}}>{s.city}</span></td>
                         <td style={tdStyle}>{s.grade} сынып <br/><span style={{fontSize: '12px', color: '#64748b'}}>{s.language}</span></td>
-                        <td style={{ ...tdStyle, fontWeight: '600', color: '#0284c7' }}>{s.profiles?.name || 'Көрсетілмеген'}</td>
+                        <td style={{ ...tdStyle, fontWeight: '600', color: '#0284c7' }}>{s.parent_name || 'Көрсетілмеген'}</td>
                       </tr>
                     ))
                   )}
